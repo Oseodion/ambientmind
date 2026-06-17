@@ -1,0 +1,1537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AmbientMind</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --cream: #faf8f4;
+  --dark: #08050f;
+  --dark2: #08050f;
+  --accent: #a78bfa;
+  --text-dark: #0f0a1e;
+  --text-muted: #6b7280;
+  --border-dark: rgba(255,255,255,0.08);
+  --border-light: rgba(0,0,0,0.08);
+}
+
+html { scroll-behavior: smooth; }
+body { font-family: 'Inter', sans-serif; overflow-x: hidden; }
+
+/* ===================== NAV ===================== */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  padding: 0 48px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(8, 5, 15, 0.75);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border-dark);
+}
+
+.logo {
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.3px;
+}
+
+.logo span { color: var(--accent); }
+
+/* FIX 1: nav-links truly centered via absolute positioning */
+.nav-links {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 32px;
+  font-size: 14px;
+  font-weight: 400;
+  color: rgba(255,255,255,0.45);
+}
+
+.nav-right { display: flex; align-items: center; gap: 12px; }
+
+.nav-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.15);
+  padding: 5px 12px;
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.5);
+  font-family: 'IBM Plex Mono', monospace;
+  letter-spacing: 0.5px;
+}
+
+.nav-pulse {
+  width: 5px; height: 5px;
+  background: var(--accent);
+  border-radius: 50%;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(167,139,250,0.4); }
+  50% { opacity: 0.7; box-shadow: 0 0 0 5px rgba(167,139,250,0); }
+}
+
+.btn-nav {
+  background: var(--accent);
+  color: #fff;
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  transition: all 0.2s;
+}
+
+.btn-nav:hover { background: #c4b5fd; transform: translateY(-1px); }
+
+/* ===================== HERO ===================== */
+.hero {
+  min-height: 100vh;
+  background: var(--dark);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+}
+
+#heroParticleCanvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Grain texture */
+.grain {
+  position: absolute;
+  inset: 0;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 200px;
+  pointer-events: none;
+  z-index: 1;
+  animation: grainanim 0.4s steps(1) infinite;
+}
+
+@keyframes grainanim {
+  0% { transform: translate(0,0); }
+  25% { transform: translate(-1px, 1px); }
+  50% { transform: translate(1px, -1px); }
+  75% { transform: translate(-1px, -1px); }
+}
+
+.hero-glow {
+  position: absolute;
+  bottom: -200px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 800px;
+  height: 400px;
+  background: radial-gradient(ellipse, rgba(167,139,250,0.1) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.hero-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image:
+    radial-gradient(ellipse 55% 70% at 3% 3%, black, transparent),
+    radial-gradient(ellipse 55% 70% at 97% 3%, black, transparent),
+    radial-gradient(ellipse 40% 50% at 3% 97%, black, transparent),
+    radial-gradient(ellipse 40% 50% at 97% 97%, black, transparent);
+  -webkit-mask-image:
+    radial-gradient(ellipse 55% 70% at 3% 3%, black, transparent),
+    radial-gradient(ellipse 55% 70% at 97% 3%, black, transparent),
+    radial-gradient(ellipse 40% 50% at 3% 97%, black, transparent),
+    radial-gradient(ellipse 40% 50% at 97% 97%, black, transparent);
+  -webkit-mask-composite: source-over;
+  mask-composite: add;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* FIX 2: gradient fade at bottom of hero to dissolve into globe section */
+.hero-bottom-fade {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 160px;
+  background: linear-gradient(to bottom, transparent 0%, #08050f 100%);
+  pointer-events: none;
+  z-index: 5;
+}
+
+.hero-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 64px;
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 80px;
+  align-items: center;
+  position: relative;
+  z-index: 10;
+  padding-top: 60px;
+}
+
+.hero-left {}
+
+.hero-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  padding: 6px 14px;
+  border-radius: 100px;
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.45);
+  letter-spacing: 0.3px;
+  margin-bottom: 28px;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.hero-h1 {
+  font-size: clamp(42px, 5vw, 72px);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -3px;
+  color: #ffffff;
+  margin-bottom: 20px;
+}
+
+.hero-h1 .purple { color: var(--accent); font-style: italic; }
+.hero-h1 .dim { color: #ffffff; }
+
+.hero-sub {
+  font-size: 17px;
+  font-weight: 400;
+  color: rgba(255,255,255,0.45);
+  line-height: 1.75;
+  margin-bottom: 40px;
+  max-width: 460px;
+}
+
+.hero-actions { display: flex; gap: 12px; align-items: center; margin-bottom: 52px; }
+
+.btn-primary {
+  background: #fff;
+  color: #000;
+  padding: 12px 26px;
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  letter-spacing: -0.2px;
+  transition: all 0.2s;
+}
+
+.btn-primary:hover {
+  background: var(--cream);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+}
+
+.btn-secondary {
+  background: transparent;
+  color: rgba(255,255,255,0.5);
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 10px;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-secondary:hover { border-color: rgba(255,255,255,0.2); color: rgba(255,255,255,0.75); }
+
+.agent-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.agent-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.07);
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.4);
+  font-family: 'IBM Plex Mono', monospace;
+  letter-spacing: 0.3px;
+}
+
+.chip-dot { width: 5px; height: 5px; border-radius: 50%; }
+.chip-active { background: #10b981; box-shadow: 0 0 6px #10b981; }
+.chip-busy { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+.chip-idle { background: rgba(255,255,255,0.2); }
+.agent-sep { color: rgba(255,255,255,0.15); font-size: 11px; }
+
+/* ===================== STATS SECTION ===================== */
+.section-divider {
+  background: var(--dark);
+  padding: 80px 64px;
+}
+
+.stats-row {
+  max-width: 1280px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: center;
+  gap: 80px;
+  flex-wrap: wrap;
+}
+
+.stat-block { text-align: center; }
+
+.stat-num {
+  font-size: 40px;
+  font-weight: 700;
+  letter-spacing: -2px;
+  color: #ffffff;
+  margin-bottom: 8px;
+  line-height: 1;
+}
+
+.stat-label {
+  font-size: 13px;
+  color: rgba(255,255,255,0.35);
+  font-weight: 400;
+}
+
+/* ===================== LIGHT SECTION ===================== */
+.light-section {
+  background: var(--cream);
+  padding: 120px 64px;
+}
+
+.light-inner { max-width: 1280px; margin: 0 auto; }
+
+.section-eyebrow {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: rgba(0,0,0,0.4);
+  margin-bottom: 16px;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.console-section .section-eyebrow { color: rgba(255,255,255,0.3); }
+
+.section-title {
+  font-size: clamp(32px, 4vw, 52px);
+  font-weight: 700;
+  letter-spacing: -2px;
+  color: #0a0a0a;
+  line-height: 1.1;
+  max-width: 640px;
+  margin-bottom: 16px;
+}
+
+.console-section .section-title { color: #ffffff; }
+
+.section-sub {
+  font-size: 16px;
+  color: #6b7280;
+  line-height: 1.75;
+  max-width: 520px;
+  margin-bottom: 64px;
+  font-weight: 400;
+}
+
+/* Feature cards */
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.feature-card {
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.07);
+  border-radius: 16px;
+  padding: 32px;
+  transition: all 0.3s;
+  position: relative;
+  overflow: hidden;
+}
+
+.feature-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #000, transparent);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.feature-card:hover {
+  border-color: rgba(0,0,0,0.15);
+  transform: translateY(-3px);
+  box-shadow: 0 16px 40px rgba(0,0,0,0.06);
+}
+
+.feature-card:hover::before { opacity: 0.15; }
+
+/* Base fc-icon - overridden per card */
+.fc-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+  border: 1px solid transparent;
+}
+
+.fc-icon svg { width: 18px; height: 18px; fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Per-card icon colors */
+.fc-icon-green { background: rgba(16,185,129,0.1); border-color: rgba(16,185,129,0.2); }
+.fc-icon-green svg { stroke: #10b981; }
+
+.fc-icon-blue { background: rgba(96,165,250,0.1); border-color: rgba(96,165,250,0.2); }
+.fc-icon-blue svg { stroke: #60a5fa; }
+
+.fc-icon-purple { background: rgba(168,85,247,0.1); border-color: rgba(168,85,247,0.2); }
+.fc-icon-purple svg { stroke: #a855f7; }
+
+.fc-icon-yellow { background: rgba(251,191,36,0.1); border-color: rgba(251,191,36,0.2); }
+.fc-icon-yellow svg { stroke: #fbbf24; }
+
+.fc-icon-red { background: rgba(248,113,113,0.1); border-color: rgba(248,113,113,0.2); }
+.fc-icon-red svg { stroke: #f87171; }
+
+.fc-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-dark);
+  margin-bottom: 8px;
+  letter-spacing: -0.3px;
+}
+
+.fc-desc {
+  font-size: 13px;
+  color: #9ca3af;
+  line-height: 1.7;
+  font-weight: 400;
+}
+
+/* ===================== DARK CONSOLE SECTION ===================== */
+.console-section {
+  background: var(--dark2);
+  padding: 120px 64px;
+  position: relative;
+  overflow: hidden;
+}
+
+.console-section::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(167,139,250,0.3), transparent);
+}
+
+.console-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 80px;
+  align-items: center;
+}
+
+.console-window {
+  background: rgba(0,0,0,0.6);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 32px 64px rgba(0,0,0,0.4), 0 0 0 1px rgba(167,139,250,0.06);
+}
+
+.console-topbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.02);
+}
+
+.win-dot { width: 10px; height: 10px; border-radius: 50%; }
+.wd-r { background: #ff5f57; }
+.wd-y { background: #febc2e; }
+.wd-g { background: #28c840; }
+
+.win-title {
+  margin-left: 8px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: rgba(255,255,255,0.25);
+  letter-spacing: 0.5px;
+}
+
+.console-body {
+  padding: 24px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.cl {
+  display: grid;
+  grid-template-columns: 120px 1fr auto;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  align-items: center;
+  opacity: 0;
+  animation: fadeline 0.4s forwards;
+}
+
+.cl:last-child { border-bottom: none; }
+.cl:nth-child(1) { animation-delay: 0.3s; }
+.cl:nth-child(2) { animation-delay: 0.8s; }
+.cl:nth-child(3) { animation-delay: 1.3s; }
+.cl:nth-child(4) { animation-delay: 1.8s; }
+.cl:nth-child(5) { animation-delay: 2.3s; }
+.cl:nth-child(6) { animation-delay: 2.8s; }
+
+@keyframes fadeline {
+  from { opacity: 0; transform: translateX(-6px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.cl-agent { font-size: 10px; letter-spacing: 0.5px; font-weight: 500; }
+.cl-orch { color: #10b981; }
+.cl-scout { color: #60a5fa; }
+.cl-analyst { color: #a855f7; }
+.cl-threat { color: #f87171; }
+.cl-reporter { color: #fbbf24; }
+.cl-msg { font-size: 10px; color: rgba(255,255,255,0.35); }
+.cl-hash { font-size: 9px; color: rgba(255,170,0,0.45); letter-spacing: 0.3px; }
+
+.cursor-blink {
+  display: inline-block;
+  width: 6px;
+  height: 11px;
+  background: rgba(255,255,255,0.7);
+  animation: blink 1s steps(1) infinite;
+  vertical-align: middle;
+  margin-left: 2px;
+}
+
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+.console-right {}
+.console-right .section-title { color: #fff; }
+.console-right .section-sub { color: rgba(255,255,255,0.4); margin-bottom: 32px; }
+
+.proof-card {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 20px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+}
+
+.pc-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.pc-verified-badge {
+  width: 16px; height: 16px;
+  background: rgba(16,185,129,0.15);
+  border: 1px solid rgba(16,185,129,0.3);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 8px;
+  color: #10b981;
+}
+
+.pc-title { font-size: 10px; color: rgba(255,255,255,0.4); letter-spacing: 2px; text-transform: uppercase; }
+.pc-rows { display: flex; flex-direction: column; gap: 0; }
+.pc-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  font-size: 10px;
+  gap: 12px;
+}
+
+.pc-row:last-child { border-bottom: none; }
+.pc-key { color: rgba(255,255,255,0.25); }
+.pc-val { color: rgba(255,255,255,0.7); text-align: right; }
+.pc-val-green { color: #10b981; }
+.pc-val-hash { color: rgba(255,170,0,0.6); font-size: 9px; word-break: break-all; text-align: right; }
+
+/* ===================== AGENTS SECTION ===================== */
+.agents-section {
+  background: var(--cream);
+  padding: 120px 64px;
+}
+
+.agents-inner { max-width: 1280px; margin: 0 auto; }
+
+.agents-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  margin-top: 64px;
+}
+
+.agent-card {
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.07);
+  border-radius: 16px;
+  padding: 24px 20px;
+  text-align: center;
+  position: relative;
+  transition: all 0.3s;
+}
+
+.agent-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 40px rgba(0,0,0,0.06);
+  border-color: rgba(0,0,0,0.12);
+}
+
+.agent-icon-wrap {
+  width: 48px; height: 48px;
+  border-radius: 12px;
+  margin: 0 auto 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  position: relative;
+}
+
+.ai-orch { background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.2); }
+.ai-scout { background: rgba(96,165,250,0.1); border: 1px solid rgba(96,165,250,0.2); }
+.ai-analyst { background: rgba(168,85,247,0.1); border: 1px solid rgba(168,85,247,0.2); }
+.ai-threat { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.2); }
+.ai-reporter { background: rgba(251,191,36,0.1); border: 1px solid rgba(251,191,36,0.2); }
+
+.agent-card-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-dark);
+  margin-bottom: 6px;
+  letter-spacing: -0.2px;
+}
+
+.agent-card-desc {
+  font-size: 11px;
+  color: #9ca3af;
+  line-height: 1.6;
+}
+
+.agent-status-dot {
+  position: absolute;
+  top: 16px; right: 16px;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+}
+
+.asd-active { background: #10b981; box-shadow: 0 0 6px #10b981; }
+.asd-idle { background: #d1d5db; }
+
+/* ===================== FOOTER ===================== */
+footer {
+  background: var(--dark);
+  padding: 80px 64px 40px;
+  border-top: 1px solid rgba(255,255,255,0.05);
+  position: relative;
+}
+
+.footer-grid-bg {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none;
+  mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%);
+}
+
+.footer-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  position: relative;
+}
+
+.footer-brand {
+  text-align: center;
+  max-width: 500px;
+  margin: 0 auto 56px;
+}
+
+.footer-logo { font-size: 18px; font-weight: 700; color: #fff; margin-bottom: 12px; letter-spacing: -0.3px; }
+.footer-logo span { color: var(--accent); }
+.footer-tagline { font-size: 13px; color: rgba(255,255,255,0.3); line-height: 1.7; max-width: 380px; margin: 0 auto 24px; }
+
+.ambient-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.12);
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.5);
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.ambient-link:hover { background: rgba(255,255,255,0.08); }
+
+.footer-cols {
+  display: flex;
+  justify-content: center;
+  gap: 80px;
+  flex-wrap: wrap;
+  margin-bottom: 60px;
+  padding-bottom: 60px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.footer-col {}
+
+.footer-col-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.25);
+  margin-bottom: 20px;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.footer-links { display: flex; flex-direction: column; gap: 12px; }
+.footer-links a {
+  font-size: 13px;
+  color: rgba(255,255,255,0.4);
+  text-decoration: none;
+  font-weight: 400;
+  transition: color 0.2s;
+}
+.footer-links a:hover { color: rgba(255,255,255,0.8); }
+
+/* Agent chips row above copyright */
+.footer-agents {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 32px;
+}
+
+.footer-agent-chip {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  padding: 4px 10px;
+  border-radius: 100px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: rgba(255,255,255,0.3);
+}
+
+.footer-bottom {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  text-align: center;
+}
+
+.footer-copy { font-size: 12px; color: rgba(255,255,255,0.2); }
+.footer-powered { font-size: 12px; color: rgba(255,255,255,0.2); font-family: 'IBM Plex Mono', monospace; }
+.footer-powered span { color: rgba(255,255,255,0.45); }
+
+/* ===================== GLOBE SPACER ===================== */
+.globe-spacer {
+  height: 300vh;
+  background: var(--dark);
+  position: relative;
+}
+
+.globe-sticky {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
+}
+
+/* Static star field behind globe canvas */
+#globeStarCanvas {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  z-index: 0;
+  pointer-events: none;
+}
+
+#globeCanvas {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  z-index: 1;
+}
+
+.globe-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.globe-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 3px;
+  color: rgba(255,255,255,0.3);
+  text-transform: uppercase;
+  margin-bottom: 14px;
+  transition: opacity 0.5s;
+}
+
+.globe-big {
+  font-size: clamp(28px, 4vw, 52px);
+  font-weight: 700;
+  letter-spacing: -2px;
+  color: #ffffff;
+  line-height: 1.15;
+  text-align: center;
+  transition: opacity 0.5s;
+}
+
+.globe-big em { font-style: italic; color: var(--accent); }
+
+/* Override hero to centered single col */
+.hero-inner {
+  grid-template-columns: 1fr !important;
+  max-width: 700px !important;
+  text-align: center;
+}
+
+.hero-left { display: flex; flex-direction: column; align-items: center; }
+.hero-sub { margin-left: auto; margin-right: auto; }
+.hero-actions { justify-content: center; }
+.agent-status { justify-content: center; }
+
+/* ---- SCROLL REVEAL ANIMATIONS ---- */
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.65s cubic-bezier(0.16,1,0.3,1), transform 0.65s cubic-bezier(0.16,1,0.3,1);
+}
+
+.reveal.visible { opacity: 1; transform: translateY(0); }
+
+.reveal.stagger-1 { transition-delay: 0.08s; }
+.reveal.stagger-2 { transition-delay: 0.16s; }
+.reveal.stagger-3 { transition-delay: 0.24s; }
+.reveal.stagger-4 { transition-delay: 0.32s; }
+.reveal.stagger-5 { transition-delay: 0.4s; }
+
+/* ---- MOBILE ---- */
+@media (max-width: 900px) {
+  nav { padding: 0 20px; height: 56px; }
+  .nav-links { display: none; }
+  .nav-badge { display: none; }
+  .btn-nav { padding: 7px 14px; font-size: 12px; }
+
+  .hero { min-height: 100vh; padding: 80px 0 60px; }
+  .hero-inner { padding: 0 24px; gap: 32px; }
+  .hero-h1 { font-size: clamp(36px, 9vw, 56px); letter-spacing: -1.5px; }
+  .hero-sub { font-size: 15px; }
+  .hero-actions { flex-wrap: wrap; }
+  .agent-status { flex-wrap: wrap; gap: 8px; }
+
+  .globe-spacer { height: 250vh; }
+
+  .section-divider { padding: 60px 24px; }
+  .stats-row { gap: 40px; }
+  .stat-num { font-size: 32px; }
+
+  .light-section { padding: 72px 24px; }
+  .light-inner .section-title { font-size: clamp(26px, 7vw, 40px); }
+  .feature-grid { grid-template-columns: 1fr; gap: 12px; }
+  .feature-card { padding: 24px; }
+
+  .console-section { padding: 72px 24px; }
+  .console-inner { grid-template-columns: 1fr; gap: 40px; }
+  .console-inner .section-title { font-size: clamp(26px, 7vw, 40px); }
+
+  .agents-section { padding: 72px 24px; }
+  .agents-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .agent-card { padding: 18px 14px; }
+  .agents-inner .section-title { font-size: clamp(26px, 7vw, 40px); }
+
+  footer { padding: 56px 24px 32px; }
+  .footer-cols { gap: 40px; }
+  .footer-bottom { flex-direction: column; gap: 8px; }
+  .footer-agents { gap: 6px; }
+}
+
+@media (max-width: 520px) {
+  .hero-h1 { font-size: clamp(32px, 10vw, 48px); }
+  .hero-actions { flex-direction: column; width: 100%; }
+  .btn-primary, .btn-secondary { width: 100%; justify-content: center; text-align: center; }
+  .stats-row { flex-direction: column; gap: 32px; align-items: center; }
+  .agents-grid { grid-template-columns: 1fr; }
+  .footer-cols { flex-direction: column; align-items: center; gap: 32px; }
+  .globe-big { font-size: clamp(22px, 7vw, 36px); }
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="logo">Ambient<span>Mind</span></div>
+  <div class="nav-links">
+    <span>Agents</span>
+    <span>Console</span>
+    <span>Proofs</span>
+    <span>Docs</span>
+  </div>
+  <div class="nav-right">
+    <div class="nav-badge"><span class="nav-pulse"></span>5 agents live</div>
+    <button class="btn-nav">Connect Wallet</button>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <canvas id="heroParticleCanvas"></canvas>
+  <div class="grain"></div>
+  <div class="hero-glow"></div>
+  <div class="hero-grid"></div>
+
+  <div class="hero-inner">
+    <div class="hero-left">
+      <div class="hero-tag"><span class="nav-pulse"></span>Multi-Agent Intelligence - Ambient Network</div>
+      <h1 class="hero-h1">
+        AI agents that<br>
+        <span class="purple">verify</span> <span class="dim">each</span><br>
+        other
+      </h1>
+      <p class="hero-sub">A network of specialized AI agents that coordinate, audit each other, and prove every decision on Ambient Network - no black boxes, no trust required</p>
+      <div class="hero-actions">
+        <button class="btn-primary">Launch Console</button>
+        <button class="btn-secondary">View Agents →</button>
+      </div>
+      <div class="agent-status">
+        <div class="agent-chip"><span class="chip-dot chip-active"></span>ORCHESTRATOR</div>
+        <span class="agent-sep">·</span>
+        <div class="agent-chip"><span class="chip-dot chip-active"></span>SCOUT</div>
+        <span class="agent-sep">·</span>
+        <div class="agent-chip"><span class="chip-dot chip-busy"></span>ANALYST</div>
+        <span class="agent-sep">·</span>
+        <div class="agent-chip"><span class="chip-dot chip-idle"></span>REPORTER</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FIX 2: bottom fade to dissolve hero into globe section -->
+  <div class="hero-bottom-fade"></div>
+</section>
+
+<!-- GLOBE SPACER -->
+<div class="globe-spacer" id="globeSpacer">
+  <div class="globe-sticky">
+    <canvas id="globeStarCanvas"></canvas>
+    <canvas id="globeCanvas"></canvas>
+    <div class="globe-text" id="globeText">
+      <div class="globe-label" id="globeLabel">Agents assembling</div>
+      <div class="globe-big" id="globeBig">The network<br>comes together</div>
+    </div>
+  </div>
+</div>
+
+<!-- STATS -->
+<div class="section-divider">
+  <div class="stats-row">
+    <div class="stat-block reveal">
+      <div class="stat-num">2,847</div>
+      <div class="stat-label">Tasks completed today</div>
+    </div>
+    <div class="stat-block reveal stagger-1">
+      <div class="stat-num">12,493</div>
+      <div class="stat-label">Proof receipts generated</div>
+    </div>
+    <div class="stat-block reveal stagger-2">
+      <div class="stat-num">99<span style="font-size:24px;color:rgba(255,255,255,0.4)">%</span></div>
+      <div class="stat-label">Agent consensus rate</div>
+    </div>
+    <div class="stat-block reveal stagger-3">
+      <div class="stat-num">5</div>
+      <div class="stat-label">Specialized AI agents</div>
+    </div>
+  </div>
+</div>
+
+<!-- FEATURES - LIGHT -->
+<section class="light-section">
+  <div class="light-inner">
+    <div class="section-eyebrow reveal">How it works</div>
+    <div class="section-title reveal">Intelligence that proves itself</div>
+    <p class="section-sub reveal">Every agent decision is cryptographically verified by Ambient's Proof of Logits - no agent can lie to another because every claim has an on-chain proof</p>
+    <div class="feature-grid">
+      <div class="feature-card reveal">
+        <div class="fc-icon fc-icon-green"><svg viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg></div>
+        <div class="fc-title">Verified Agent Decisions</div>
+        <div class="fc-desc">Every AI decision generates a SHA-256 proof receipt stored permanently on Ambient Network</div>
+      </div>
+      <div class="feature-card reveal stagger-1">
+        <div class="fc-icon fc-icon-blue"><svg viewBox="0 0 24 24"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg></div>
+        <div class="fc-title">Multi-Agent Consensus</div>
+        <div class="fc-desc">Multiple specialized agents analyze each task independently - consensus required before any verdict</div>
+      </div>
+      <div class="feature-card reveal stagger-2">
+        <div class="fc-icon fc-icon-purple"><svg viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></div>
+        <div class="fc-title">Real-Time Orchestration</div>
+        <div class="fc-desc">Watch agents coordinate live - each step visible, each decision auditable, nothing hidden</div>
+      </div>
+      <div class="feature-card reveal stagger-3">
+        <div class="fc-icon fc-icon-yellow"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/></svg></div>
+        <div class="fc-title">Solana Native</div>
+        <div class="fc-desc">Built on Ambient's SVM-compatible network - wallet connection, on-chain proofs, token integration</div>
+      </div>
+      <div class="feature-card reveal stagger-4">
+        <div class="fc-icon fc-icon-red"><svg viewBox="0 0 24 24"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg></div>
+        <div class="fc-title">Threat Intelligence</div>
+        <div class="fc-desc">Agents monitor Solana wallets, tokens, and contracts for malicious patterns in real time</div>
+      </div>
+      <div class="feature-card reveal stagger-5">
+        <div class="fc-icon fc-icon-blue"><svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg></div>
+        <div class="fc-title">Proof Receipt Gallery</div>
+        <div class="fc-desc">Every verified AI decision stored and viewable - complete audit trail of the network's activity</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CONSOLE - DARK -->
+<section class="console-section">
+  <div class="console-inner">
+    <div class="console-window reveal">
+      <div class="console-topbar">
+        <div class="win-dot wd-r"></div>
+        <div class="win-dot wd-y"></div>
+        <div class="win-dot wd-g"></div>
+        <span class="win-title">ambientmind - live console</span>
+      </div>
+      <div class="console-body">
+        <div class="cl">
+          <span class="cl-agent cl-orch">ORCHESTRATOR</span>
+          <span class="cl-msg">Task received - analyze wallet 8NtD...Ahe9</span>
+          <span class="cl-hash">sha256:4f2a...</span>
+        </div>
+        <div class="cl">
+          <span class="cl-agent cl-scout">SCOUT</span>
+          <span class="cl-msg">Scanning 847 transactions - 3 flagged</span>
+          <span class="cl-hash">sha256:9b1c...</span>
+        </div>
+        <div class="cl">
+          <span class="cl-agent cl-analyst">ANALYST</span>
+          <span class="cl-msg">Risk analysis complete - score 87/100</span>
+          <span class="cl-hash">sha256:2d8f...</span>
+        </div>
+        <div class="cl">
+          <span class="cl-agent cl-threat">THREAT</span>
+          <span class="cl-msg">Known rug pattern detected - flagging</span>
+          <span class="cl-hash">sha256:7c3e...</span>
+        </div>
+        <div class="cl">
+          <span class="cl-agent cl-reporter">REPORTER</span>
+          <span class="cl-msg">Alert generated - notifying user</span>
+          <span class="cl-hash">sha256:1a9f...</span>
+        </div>
+        <div class="cl">
+          <span class="cl-agent cl-orch">ORCHESTRATOR</span>
+          <span class="cl-msg">VERDICT: CRITICAL - DO NOT INTERACT<span class="cursor-blink"></span></span>
+          <span class="cl-hash">sha256:ecf7...</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="console-right">
+      <div class="section-eyebrow reveal">Live proof receipts</div>
+      <div class="section-title reveal" style="color:#fff">Every decision, on-chain forever</div>
+      <p class="section-sub reveal">When AmbientMind flags a threat, you get a cryptographic proof of what the AI decided - model, timestamp, consensus hash - permanently stored on Ambient Network</p>
+      <div class="proof-card reveal">
+        <div class="pc-header">
+          <div class="pc-verified-badge">✓</div>
+          <span class="pc-title">Verified AI Decision</span>
+        </div>
+        <div class="pc-rows">
+          <div class="pc-row"><span class="pc-key">Verdict</span><span class="pc-val">CRITICAL - Rug Pattern Detected</span></div>
+          <div class="pc-row"><span class="pc-key">Model</span><span class="pc-val-green">ambient/large - Ambient Network</span></div>
+          <div class="pc-row"><span class="pc-key">Agents</span><span class="pc-val">4 of 5 consensus</span></div>
+          <div class="pc-row"><span class="pc-key">Timestamp</span><span class="pc-val">2026-06-16 09:14:22 UTC</span></div>
+          <div class="pc-row"><span class="pc-key">Hash</span><span class="pc-val-hash">sha256:ecf785a63c50ada5ba21eaf318c2bc747b0fb841...</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- AGENTS - LIGHT -->
+<section class="agents-section">
+  <div class="agents-inner">
+    <div class="section-eyebrow reveal">The network</div>
+    <div class="section-title reveal">Five agents, one intelligence</div>
+    <p class="section-sub reveal">Each agent specializes in one task - together they form a verified intelligence network where no single point of failure exists</p>
+    <div class="agents-grid">
+      <div class="agent-card reveal">
+        <div class="agent-status-dot asd-active"></div>
+        <div class="agent-icon-wrap ai-orch">
+          <svg viewBox="0 0 24 24" style="width:20px;height:20px;stroke:#10b981;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round"><path d="M4 6h16M4 12h16M4 18h7"/><circle cx="18" cy="18" r="3"/><path d="M21 18h-1.5M15 18h-1.5M18 15v-1.5M18 21v-1.5"/></svg>
+        </div>
+        <div class="agent-card-name">Orchestrator</div>
+        <div class="agent-card-desc">Routes tasks, manages agent coordination, synthesizes final verdict</div>
+      </div>
+      <div class="agent-card reveal stagger-1">
+        <div class="agent-status-dot asd-active"></div>
+        <div class="agent-icon-wrap ai-scout">
+          <svg viewBox="0 0 24 24" style="width:20px;height:20px;stroke:#60a5fa;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        </div>
+        <div class="agent-card-name">Scout Agent</div>
+        <div class="agent-card-desc">Monitors wallets and tokens, flags suspicious patterns for analysis</div>
+      </div>
+      <div class="agent-card reveal stagger-2">
+        <div class="agent-status-dot asd-active"></div>
+        <div class="agent-icon-wrap ai-analyst">
+          <svg viewBox="0 0 24 24" style="width:20px;height:20px;stroke:#a855f7;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+        </div>
+        <div class="agent-card-name">Analyst Agent</div>
+        <div class="agent-card-desc">Deep risk analysis on flagged items using Ambient verified inference</div>
+      </div>
+      <div class="agent-card reveal stagger-3">
+        <div class="agent-status-dot asd-active"></div>
+        <div class="agent-icon-wrap ai-threat">
+          <svg viewBox="0 0 24 24" style="width:20px;height:20px;stroke:#f87171;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        </div>
+        <div class="agent-card-name">Threat Agent</div>
+        <div class="agent-card-desc">Cross-references known bad actors and exploit patterns across Solana</div>
+      </div>
+      <div class="agent-card reveal stagger-4">
+        <div class="agent-status-dot asd-idle"></div>
+        <div class="agent-icon-wrap ai-reporter">
+          <svg viewBox="0 0 24 24" style="width:20px;height:20px;stroke:#fbbf24;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round"><path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+        </div>
+        <div class="agent-card-name">Reporter Agent</div>
+        <div class="agent-card-desc">Summarizes findings and generates verified alert reports for users</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-grid-bg"></div>
+  <div class="footer-inner">
+
+    <div class="footer-brand reveal">
+      <div class="footer-logo">Ambient<span>Mind</span></div>
+      <div class="footer-tagline">A verified multi-agent intelligence network built on Ambient Network - where AI agents prove every decision on-chain</div>
+      <a href="https://ambient.xyz" target="_blank" class="ambient-link">Built on Ambient Network</a>
+    </div>
+
+    <div class="footer-cols reveal stagger-1">
+      <div class="footer-col">
+        <div class="footer-col-title">Product</div>
+        <div class="footer-links">
+          <a href="#">Console</a>
+          <a href="#">Agent Network</a>
+          <a href="#">Proof Receipts</a>
+          <a href="#">Docs</a>
+        </div>
+      </div>
+      <div class="footer-col">
+        <div class="footer-col-title">Ambient Network</div>
+        <div class="footer-links">
+          <a href="https://ambient.xyz" target="_blank">ambient.xyz</a>
+          <a href="https://x.com/ambient_xyz" target="_blank">Twitter</a>
+          <a href="https://discord.gg/3Seasf7DcB" target="_blank">Discord</a>
+          <a href="https://docs.ambient.xyz" target="_blank">Developer Docs</a>
+        </div>
+      </div>
+      <div class="footer-col">
+        <div class="footer-col-title">Builder</div>
+        <div class="footer-links">
+          <a href="https://x.com/web3_tech_" target="_blank">Jeff</a>
+          <a href="https://discord.gg/3Seasf7DcB" target="_blank">Ambient Discord</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-agents reveal stagger-2">
+      <span class="footer-agent-chip">ORCHESTRATOR</span>
+      <span class="footer-agent-chip">SCOUT</span>
+      <span class="footer-agent-chip">ANALYST</span>
+      <span class="footer-agent-chip">THREAT</span>
+      <span class="footer-agent-chip">REPORTER</span>
+    </div>
+
+    <div class="footer-bottom reveal stagger-3">
+      <div class="footer-copy">AmbientMind 2026 - Built on Ambient Network testnet</div>
+      <div class="footer-powered">Verified by <span>Proof of Logits</span> · ambient/large</div>
+    </div>
+  </div>
+</footer>
+
+<script>
+// =================== HERO STAR PARTICLES ===================
+(function() {
+  const canvas = document.getElementById('heroParticleCanvas');
+  const ctx = canvas.getContext('2d');
+  const hero = canvas.closest('.hero');
+
+  let W, H, dpr;
+  let mouseX = 0, mouseY = 0;
+
+  function resize() {
+    dpr = window.devicePixelRatio || 1;
+    W = hero.offsetWidth;
+    H = hero.offsetHeight;
+    canvas.width = W * dpr;
+    canvas.height = H * dpr;
+    canvas.style.width = W + 'px';
+    canvas.style.height = H + 'px';
+    ctx.scale(dpr, dpr);
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  hero.addEventListener('mousemove', (e) => {
+    const rect = hero.getBoundingClientRect();
+    mouseX = (e.clientX - rect.left) / W - 0.5;
+    mouseY = (e.clientY - rect.top) / H - 0.5;
+  });
+
+  const HERO_STARS = 120;
+  const stars = Array.from({ length: HERO_STARS }, () => {
+    const isPurple = Math.random() > 0.78;
+    return {
+      x: Math.random(),
+      y: Math.random(),
+      size: Math.random() * 1.4 + 0.3,
+      vx: (Math.random() - 0.5) * 0.00008,
+      vy: (Math.random() - 0.5) * 0.00006,
+      phase: Math.random() * Math.PI * 2,
+      twinkleSpeed: 0.003 + Math.random() * 0.005,
+      baseOpacity: 0.06 + Math.random() * 0.19,
+      isPurple,
+    };
+  });
+
+  let frame = 0;
+
+  function drawHeroStars() {
+    ctx.clearRect(0, 0, W, H);
+    frame++;
+
+    const parallaxStrength = 12;
+
+    stars.forEach(s => {
+      s.x += s.vx;
+      s.y += s.vy;
+      if (s.x < 0) s.x = 1;
+      if (s.x > 1) s.x = 0;
+      if (s.y < 0) s.y = 1;
+      if (s.y > 1) s.y = 0;
+
+      const parallaxFactor = s.size / 1.7;
+      const px = s.x * W + mouseX * parallaxStrength * parallaxFactor;
+      const py = s.y * H + mouseY * parallaxStrength * parallaxFactor;
+
+      const twinkle = 0.5 + 0.5 * Math.sin(frame * s.twinkleSpeed + s.phase);
+      const opacity = s.baseOpacity * (0.55 + 0.45 * twinkle);
+
+      ctx.beginPath();
+      ctx.arc(px, py, s.size, 0, Math.PI * 2);
+      if (s.isPurple) {
+        ctx.fillStyle = `rgba(200,180,255,${Math.min(opacity, 0.10)})`;
+      } else {
+        ctx.fillStyle = `rgba(255,255,255,${Math.min(opacity, 0.25)})`;
+      }
+      ctx.fill();
+    });
+
+    requestAnimationFrame(drawHeroStars);
+  }
+
+  drawHeroStars();
+})();
+
+// =================== GLOBE STATIC STAR FIELD ===================
+(function() {
+  const starCanvas = document.getElementById('globeStarCanvas');
+  const sCtx = starCanvas.getContext('2d');
+
+  function drawGlobeStars() {
+    const dpr = window.devicePixelRatio || 1;
+    const w = starCanvas.offsetWidth;
+    const h = starCanvas.offsetHeight;
+    starCanvas.width = w * dpr;
+    starCanvas.height = h * dpr;
+    sCtx.scale(dpr, dpr);
+
+    for (let i = 0; i < 150; i++) {
+      const x = Math.random() * w;
+      const y = Math.random() * h;
+      const r = Math.random() * 1.2 + 0.2;
+      const isPurple = Math.random() > 0.82;
+      const opacity = 0.04 + Math.random() * 0.08;
+
+      sCtx.beginPath();
+      sCtx.arc(x, y, r, 0, Math.PI * 2);
+      if (isPurple) {
+        sCtx.fillStyle = `rgba(200,180,255,${Math.min(opacity, 0.08)})`;
+      } else {
+        sCtx.fillStyle = `rgba(255,255,255,${Math.min(opacity, 0.12)})`;
+      }
+      sCtx.fill();
+    }
+  }
+
+  drawGlobeStars();
+  window.addEventListener('resize', drawGlobeStars);
+})();
+
+// =================== PARTICLE GLOBE ===================
+const globeCanvas = document.getElementById('globeCanvas');
+const gCtx = globeCanvas.getContext('2d');
+
+function resizeGlobe() {
+  globeCanvas.width = globeCanvas.offsetWidth * window.devicePixelRatio;
+  globeCanvas.height = globeCanvas.offsetHeight * window.devicePixelRatio;
+  gCtx.scale(window.devicePixelRatio, window.devicePixelRatio);
+}
+resizeGlobe();
+window.addEventListener('resize', () => { resizeGlobe(); });
+
+const GLOBE_COUNT = 1800;
+
+function makeGlobeParticles() {
+  return Array.from({ length: GLOBE_COUNT }, (_, i) => {
+    const golden = Math.PI * (3 - Math.sqrt(5));
+    const y = 1 - (i / (GLOBE_COUNT - 1)) * 2;
+    const r = Math.sqrt(Math.max(0, 1 - y * y));
+    const theta = golden * i;
+    const globeNX = r * Math.cos(theta);
+    const globeNY = y;
+    const globeNZ = r * Math.sin(theta);
+
+    const isSpecial = Math.random() > 0.85;
+    const color = isSpecial
+      ? `rgba(167,139,250,`
+      : Math.random() > 0.65
+      ? `rgba(200,185,255,`
+      : `rgba(255,255,255,`;
+
+    return {
+      startX: Math.random(),
+      startY: Math.random(),
+      globeNX, globeNY, globeNZ,
+      scatterAngle: Math.random() * Math.PI * 2,
+      scatterDist: 0.8 + Math.random() * 1.2,
+      color,
+      size: Math.random() * 1.2 + 0.2,
+      speed: 0.6 + Math.random() * 0.4,
+    };
+  });
+}
+
+const gParticles = makeGlobeParticles();
+let globeRot = 0;
+
+function drawGlobe(progress) {
+  const w = globeCanvas.offsetWidth;
+  const h = globeCanvas.offsetHeight;
+  gCtx.clearRect(0, 0, w, h);
+
+  globeRot += 0.005;
+
+  const radius = Math.min(w, h) * 0.30;
+  const cx = w / 2;
+  const cy = h / 2;
+
+  gParticles.forEach(p => {
+    let x, y, opacity, size;
+
+    if (progress <= 0.5) {
+      const t = Math.min(1, (progress / 0.5) * p.speed);
+      const ease = t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
+
+      const gx = cx + (p.globeNX * Math.cos(globeRot) - p.globeNZ * Math.sin(globeRot)) * radius;
+      const gy = cy + p.globeNY * radius;
+
+      x = p.startX * w + (gx - p.startX * w) * ease;
+      y = p.startY * h + (gy - p.startY * h) * ease;
+      opacity = 0.06 + ease * 0.55;
+      size = p.size * (0.4 + ease * 0.6);
+
+    } else if (progress <= 0.72) {
+      const gx = cx + (p.globeNX * Math.cos(globeRot) - p.globeNZ * Math.sin(globeRot)) * radius;
+      const gy = cy + p.globeNY * radius;
+      x = gx; y = gy;
+      opacity = 0.65;
+      size = p.size;
+
+    } else {
+      const t = (progress - 0.72) / 0.28;
+      const ease = t * t;
+
+      const gx = cx + (p.globeNX * Math.cos(globeRot) - p.globeNZ * Math.sin(globeRot)) * radius;
+      const gy = cy + p.globeNY * radius;
+
+      const tx = cx + Math.cos(p.scatterAngle) * p.scatterDist * w * 0.6;
+      const ty = cy + Math.sin(p.scatterAngle) * p.scatterDist * h * 0.6;
+
+      x = gx + (tx - gx) * ease;
+      y = gy + (ty - gy) * ease;
+      opacity = 0.85 * (1 - ease * ease);
+      size = p.size * (1 + ease * 3);
+    }
+
+    gCtx.beginPath();
+    gCtx.arc(x, y, Math.max(0.1, size), 0, Math.PI * 2);
+    gCtx.fillStyle = p.color + Math.max(0, Math.min(1, opacity)) + ')';
+    gCtx.fill();
+  });
+}
+
+const globeSpacer = document.getElementById('globeSpacer');
+const globeLabel = document.getElementById('globeLabel');
+const globeBig = document.getElementById('globeBig');
+
+function onScroll() {
+  const rect = globeSpacer.getBoundingClientRect();
+  const total = globeSpacer.offsetHeight - window.innerHeight;
+  const scrolled = -rect.top;
+  const progress = Math.max(0, Math.min(1, scrolled / total));
+
+  if (progress < 0.45) {
+    globeLabel.textContent = 'Agents assembling';
+    globeBig.innerHTML = 'The network<br>comes together';
+    globeLabel.style.opacity = 1;
+    globeBig.style.opacity = 1;
+  } else if (progress < 0.72) {
+    globeLabel.textContent = 'Network formed';
+    globeBig.innerHTML = 'One unified<br><em>intelligence</em>';
+    globeLabel.style.opacity = 1;
+    globeBig.style.opacity = 1;
+  } else {
+    const fade = 1 - (progress - 0.72) / 0.28;
+    globeLabel.textContent = 'Every decision verified';
+    globeBig.innerHTML = 'Proof of Logits<br><em>on-chain forever</em>';
+    globeLabel.style.opacity = fade;
+    globeBig.style.opacity = fade;
+  }
+}
+
+drawGlobe(0);
+window.addEventListener('scroll', onScroll, { passive: true });
+
+function globeLoop() {
+  requestAnimationFrame(globeLoop);
+  const rect = globeSpacer.getBoundingClientRect();
+  const total = globeSpacer.offsetHeight - window.innerHeight;
+  const scrolled = -rect.top;
+  const progress = Math.max(0, Math.min(1, scrolled / total));
+  if (scrolled > -window.innerHeight && scrolled < globeSpacer.offsetHeight) {
+    drawGlobe(progress);
+  }
+}
+globeLoop();
+
+// =================== SCROLL REVEAL ANIMATIONS ===================
+const revealObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+    }
+  });
+}, { threshold: 0.1 });
+
+document.querySelectorAll('.reveal').forEach(el => {
+  revealObserver.observe(el);
+});
+</script>
+
+</body>
+</html>
