@@ -1,0 +1,202 @@
+/* ===================== MISSION HISTORY PAGE ===================== */
+.history-page { max-width: 960px; }
+
+.history-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 32px;
+}
+
+.history-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -1px;
+}
+
+/* Mission List */
+.history-list { display: flex; flex-direction: column; gap: 8px; }
+
+.history-card {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+
+.history-card:hover { border-color: rgba(255,255,255,0.12); }
+
+.history-card-top {
+  padding: 16px 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.history-task {
+  flex: 1;
+  font-size: 13px;
+  color: rgba(255,255,255,0.7);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 120px;
+}
+
+.history-time {
+  font-size: 10px;
+  color: rgba(255,255,255,0.25);
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.history-agents-count {
+  font-size: 10px;
+  color: rgba(255,255,255,0.35);
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.history-proofs-count {
+  font-size: 10px;
+  color: rgba(255,170,0,0.5);
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.verdict-badge {
+  display: inline-flex;
+  padding: 3px 10px;
+  border-radius: 100px;
+  font-size: 10px;
+  font-weight: 600;
+  font-family: 'IBM Plex Mono', monospace;
+  letter-spacing: 0.5px;
+}
+
+.verdict-safe {
+  background: rgba(16,185,129,0.1);
+  border: 1px solid rgba(16,185,129,0.25);
+  color: #10b981;
+}
+
+.verdict-low {
+  background: rgba(96,165,250,0.1);
+  border: 1px solid rgba(96,165,250,0.25);
+  color: #60a5fa;
+}
+
+.verdict-medium {
+  background: rgba(251,191,36,0.1);
+  border: 1px solid rgba(251,191,36,0.25);
+  color: #fbbf24;
+}
+
+.verdict-high {
+  background: rgba(248,113,113,0.1);
+  border: 1px solid rgba(248,113,113,0.25);
+  color: #f87171;
+}
+
+.verdict-critical {
+  background: rgba(239,68,68,0.15);
+  border: 1px solid rgba(239,68,68,0.3);
+  color: #ef4444;
+}
+
+.history-expand-icon {
+  color: rgba(255,255,255,0.25);
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+
+.history-expand-icon.open { transform: rotate(180deg); }
+
+/* Expanded Content */
+.history-expanded {
+  border-top: 1px solid rgba(255,255,255,0.06);
+  padding: 20px;
+}
+
+.history-console-replay {
+  background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 16px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+}
+
+.history-console-line {
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+
+.history-console-line:last-child { border-bottom: none; }
+
+.history-proofs-list { display: flex; flex-direction: column; gap: 6px; }
+
+.history-proof-mini {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 8px;
+  font-size: 11px;
+}
+
+.history-proof-mini .agent {
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  width: 80px;
+  flex-shrink: 0;
+}
+
+.history-proof-mini .decision {
+  flex: 1;
+  color: rgba(255,255,255,0.4);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-proof-mini .hash {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  color: rgba(255,170,0,0.45);
+  flex-shrink: 0;
+}
+
+/* Empty State */
+.history-empty {
+  text-align: center;
+  padding: 80px 24px;
+  color: rgba(255,255,255,0.25);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.history-empty-icon {
+  width: 48px; height: 48px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 16px;
+}
+
+@media (max-width: 768px) {
+  .history-card-top { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .history-task { white-space: normal; }
+  .history-console-line { grid-template-columns: 80px 1fr; }
+  .history-proof-mini { flex-direction: column; align-items: flex-start; gap: 4px; }
+  .history-proof-mini .decision { white-space: normal; }
+}

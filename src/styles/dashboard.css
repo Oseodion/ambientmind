@@ -1,0 +1,166 @@
+.dash-layout {
+  min-height: 100vh;
+  background: #08050f;
+}
+
+.dash-sidebar {
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+  width: 240px;
+  background: rgba(8, 5, 15, 0.95);
+  border-right: 1px solid rgba(255,255,255,0.08);
+  display: flex;
+  flex-direction: column;
+  padding: 24px 16px;
+  z-index: 50;
+}
+
+.dash-logo {
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.3px;
+  padding: 0 8px;
+  margin-bottom: 32px;
+}
+
+.dash-logo span { color: #a78bfa; }
+
+.dash-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.dash-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.45);
+  text-decoration: none;
+  transition: all 0.15s;
+  white-space: nowrap;
+  border-left: 2px solid transparent;
+}
+
+.dash-nav-item:hover {
+  color: rgba(255,255,255,0.7);
+  background: rgba(255,255,255,0.04);
+}
+
+.dash-nav-item.active {
+  color: #a78bfa;
+  background: rgba(167,139,250,0.08);
+  border-left-color: #a78bfa;
+}
+
+.dash-sidebar-bottom {
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+
+.dash-wallet-badge { position: relative; }
+
+.dash-wallet-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  color: rgba(255,255,255,0.6);
+  font-size: 12px;
+  font-family: 'IBM Plex Mono', monospace;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.dash-wallet-btn:hover { background: rgba(255,255,255,0.06); }
+
+.dash-wallet-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 6px #10b981;
+}
+
+.dash-wallet-addr { flex: 1; text-align: left; }
+
+.dash-wallet-dropdown {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0; right: 0;
+  background: #1a1425;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+
+.dash-wallet-dropdown button {
+  display: block;
+  width: 100%;
+  padding: 10px 14px;
+  background: transparent;
+  border: none;
+  color: rgba(255,255,255,0.6);
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.dash-wallet-dropdown button:hover { background: rgba(255,255,255,0.06); }
+
+.dash-wallet-dropdown .dash-disconnect { color: #f87171; }
+.dash-wallet-dropdown .dash-disconnect:hover { background: rgba(248,113,113,0.08); }
+
+.dash-main {
+  margin-left: 240px;
+  min-height: 100vh;
+  padding: 32px 40px;
+}
+
+.dash-mobile-tabs {
+  display: none;
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: 72px;
+  background: rgba(8, 5, 15, 0.95);
+  backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(255,255,255,0.08);
+  z-index: 50;
+  justify-content: space-around;
+  align-items: center;
+  padding: 0 8px;
+}
+
+.dash-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: rgba(255,255,255,0.35);
+  text-decoration: none;
+  padding: 8px;
+  transition: color 0.15s;
+}
+
+.dash-tab.active { color: #a78bfa; }
+.dash-tab:hover { color: rgba(255,255,255,0.6); }
+
+@media (max-width: 768px) {
+  .dash-sidebar { display: none; }
+  .dash-main { margin-left: 0; padding: 24px 16px 88px; }
+  .dash-mobile-tabs { display: flex; }
+}

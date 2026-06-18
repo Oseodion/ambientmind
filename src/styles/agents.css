@@ -1,0 +1,257 @@
+/* ===================== AGENT NETWORK PAGE - BENTO ===================== */
+.an-page { max-width: 960px; }
+
+.an-header { margin-bottom: 40px; }
+
+.an-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -1px;
+  margin-bottom: 10px;
+}
+
+.an-subtitle {
+  font-size: 15px;
+  color: rgba(255,255,255,0.35);
+  line-height: 1.7;
+  max-width: 520px;
+}
+
+/* Stats Row */
+.an-stats {
+  display: flex;
+  gap: 56px;
+  margin-bottom: 32px;
+  flex-wrap: wrap;
+}
+
+.an-stat { text-align: left; }
+
+.an-stat-num {
+  font-size: 36px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -2px;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.an-stat-label {
+  font-size: 12px;
+  color: rgba(255,255,255,0.3);
+  font-weight: 400;
+}
+
+/* Bento Grid */
+.an-bento { margin-bottom: 40px; }
+
+/* Orchestrator - Full Width */
+.an-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 16px;
+  border-left: 3px solid transparent;
+  transition: all 0.2s;
+}
+
+.an-card:hover {
+  border-color: rgba(255,255,255,0.12);
+  border-left-width: 3px;
+  transform: translateY(-2px);
+}
+
+.an-card-orch {
+  width: 100%;
+  height: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 32px 36px;
+  margin-bottom: 12px;
+}
+
+.an-card-orch:hover { border-left-color: #10b981; }
+
+.an-card-orch-left { flex: 1; }
+
+.an-card-name-lg {
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.5px;
+  margin-bottom: 6px;
+}
+
+.an-card-role {
+  font-size: 13px;
+  color: rgba(255,255,255,0.35);
+  margin-bottom: 14px;
+  line-height: 1.5;
+}
+
+.an-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.an-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  animation: anPulse 2s ease-in-out infinite;
+}
+
+@keyframes anPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.an-status-text {
+  font-size: 10px;
+  font-weight: 600;
+  font-family: 'IBM Plex Mono', monospace;
+  letter-spacing: 1px;
+}
+
+.an-card-orch-right { text-align: right; }
+
+.an-proof-count {
+  font-size: 48px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -3px;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.an-proof-label {
+  font-size: 12px;
+  color: rgba(255,255,255,0.3);
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+/* 2x2 Grid */
+.an-grid-4 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.an-card-sm {
+  height: 180px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+}
+
+.an-card-sm:hover { border-left-width: 3px; }
+
+.an-card-sm-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.an-card-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: -0.2px;
+}
+
+.an-proof-count-sm {
+  font-size: 40px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -2px;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.an-card-role-sm {
+  font-size: 12px;
+  color: rgba(255,255,255,0.35);
+  line-height: 1.5;
+  margin-bottom: auto;
+}
+
+.an-last-action {
+  font-size: 10px;
+  color: rgba(255,255,255,0.2);
+  font-family: 'IBM Plex Mono', monospace;
+  margin-top: 12px;
+}
+
+/* Dots Row */
+.an-dots-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  position: relative;
+  padding: 32px 0;
+}
+
+.an-dots-line {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 70%;
+  height: 1px;
+  background: rgba(255,255,255,0.08);
+  margin-top: -10px;
+}
+
+.an-dot-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  position: relative;
+  z-index: 1;
+}
+
+.an-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  animation: anPulse 2s ease-in-out infinite;
+}
+
+.an-dot-label {
+  font-size: 9px;
+  color: rgba(255,255,255,0.3);
+  font-family: 'IBM Plex Mono', monospace;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .an-stats { gap: 32px; }
+  .an-stat-num { font-size: 28px; }
+
+  .an-card-orch {
+    flex-direction: column;
+    height: auto;
+    padding: 24px;
+    align-items: flex-start;
+    gap: 20px;
+  }
+
+  .an-card-orch-right { text-align: left; }
+  .an-proof-count { font-size: 36px; }
+
+  .an-grid-4 { grid-template-columns: 1fr; }
+
+  .an-card-sm { height: auto; min-height: 160px; }
+
+  .an-dots-row { gap: 0; }
+  .an-dots-line { width: 80%; }
+  .an-dot-label { font-size: 8px; }
+}
