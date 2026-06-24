@@ -31,7 +31,10 @@ const EXAMPLES = {
     'So11111111111111111111111111111111111111112',
     'mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So',
   ],
-  transaction: [],
+  transaction: [
+    '5UfgJ5vVZxUxefDGqzqkVLHzHxVTyYH9StYyHKGSzYAEZYEJx2J4gJgmfBFbmRBjJvhPHwSTEHkfWM4oJCLVQZb',
+    '3vZ5YqMaKZhQcAaVZGAhRPMRHFtECZUmcBCQkJVNMdGR7WxYpLsNqFRuKmBDtHeXcP9wJvQsNpMRFuKLZBRGkA',
+  ],
 }
 
 function withTimeout(promise, ms) {
@@ -87,7 +90,8 @@ export default function ConsolePage() {
 
   const currentType = TASK_TYPES.find(t => t.id === taskType)
   const taskString = currentType.buildTask(address.trim())
-  const canRun = address.trim().length >= 32
+  const addrLen = address.trim().length
+  const canRun = taskType === 'transaction' ? addrLen >= 86 && addrLen <= 90 : addrLen >= 32 && addrLen <= 44
 
   const scrollToBottom = useCallback(() => {
     setTimeout(() => consoleEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
@@ -311,6 +315,9 @@ export default function ConsolePage() {
             disabled={status === 'running'}
             onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); runMission() } }}
           />
+          {taskType === 'transaction' && (
+            <div className="mission-input-helper">A transaction signature is the 87-88 character string from Solana Explorer</div>
+          )}
         </div>
 
         {EXAMPLES[taskType] && EXAMPLES[taskType].length > 0 && (

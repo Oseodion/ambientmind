@@ -110,6 +110,12 @@
   cursor: not-allowed;
 }
 
+.mission-input-helper {
+  font-size: 11px;
+  color: rgba(255,255,255,0.2);
+  margin-top: 8px;
+}
+
 /* Example Chips */
 .mission-examples {
   margin-bottom: 20px;
