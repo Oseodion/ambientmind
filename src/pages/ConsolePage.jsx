@@ -20,10 +20,19 @@ const TASK_TYPES = [
   { id: 'transaction', label: 'Investigate Transaction', placeholder: 'Paste transaction signature...', buildTask: (addr) => `Investigate transaction ${addr} for malicious patterns` },
 ]
 
-const EXAMPLES = [
-  { type: 'wallet', address: '8NtDWpGCZBD6bjbuoKJfWuzg2Ux8hKij6naHov7hAhe9' },
-  { type: 'token', address: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v' },
-]
+const EXAMPLES = {
+  wallet: [
+    '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU',
+    '9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM',
+    '8NtDWpGCZBD6bjbuoKJfWuzg2Ux8hKij6naHov7hAhe9',
+  ],
+  token: [
+    'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+    'So11111111111111111111111111111111111111112',
+    'mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So',
+  ],
+  transaction: [],
+}
 
 function withTimeout(promise, ms) {
   return Promise.race([
@@ -66,7 +75,7 @@ export default function ConsolePage() {
 
   useEffect(() => {
     if (!rateLimited) return
-    setRetryCooldown(120)
+    setRetryCooldown(180)
     const interval = setInterval(() => {
       setRetryCooldown(prev => {
         if (prev <= 1) { clearInterval(interval); return 0 }
@@ -304,21 +313,23 @@ export default function ConsolePage() {
           />
         </div>
 
-        <div className="mission-examples">
-          <div className="mission-examples-label">Try an example:</div>
-          <div className="mission-examples-row">
-            {EXAMPLES.map(ex => (
-              <button
-                key={ex.address}
-                className="mission-example-chip"
-                onClick={() => { setTaskType(ex.type); setAddress(ex.address) }}
-                disabled={status === 'running'}
-              >
-                {ex.address}
-              </button>
-            ))}
+        {EXAMPLES[taskType] && EXAMPLES[taskType].length > 0 && (
+          <div className="mission-examples">
+            <div className="mission-examples-label">Try an example:</div>
+            <div className="mission-examples-row">
+              {EXAMPLES[taskType].map(addr => (
+                <button
+                  key={addr}
+                  className="mission-example-chip"
+                  onClick={() => setAddress(addr)}
+                  disabled={status === 'running'}
+                >
+                  {addr}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="mission-actions-section">
           <div className="mission-actions">
@@ -336,7 +347,7 @@ export default function ConsolePage() {
         {rateLimited && (
           <div className="rate-limit-banner">
             <div className="rate-limit-text">
-              Rate limit reached - Ambient Network allows limited sequential API calls per minute. Please wait 2-3 minutes before running another mission
+              Ambient Network rate limit reached. This is a shared API during the testnet phase - each mission uses 5 sequential AI calls. Wait 2-3 minutes and try again, or try a different address which may route to a different inference node
             </div>
             {retryCooldown > 0 ? (
               <div className="rate-limit-countdown">Retry available in {Math.floor(retryCooldown / 60)}:{String(retryCooldown % 60).padStart(2, '0')}</div>
