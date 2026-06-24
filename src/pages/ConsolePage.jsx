@@ -1,9 +1,9 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import DashboardLayout from '../components/DashboardLayout'
 import { useWallet } from '../context/WalletContext'
 import { useProofs } from '../context/ProofContext'
 import { useMissions } from '../context/MissionContext'
-import { runFullMission } from '../lib/ambientAI'
+import { runOrchestrator, runScout, runAnalyst, runThreat, runReporter, stripMarkdown } from '../lib/ambientAI'
 import '../styles/console.css'
 
 const AGENT_COLORS = {
@@ -14,101 +14,254 @@ const AGENT_COLORS = {
   Reporter: 'color-reporter',
 }
 
-const AGENT_LABELS = ['ORCHESTRATOR', 'SCOUT', 'ANALYST', 'THREAT', 'REPORTER']
-
-const EXAMPLE_TASKS = [
-  'Analyze wallet 8NtD...Ahe9 for threats',
-  'Scan token EPjF...Dt1v for risks',
-  'Monitor this address for suspicious activity',
+const TASK_TYPES = [
+  { id: 'wallet', label: 'Analyze Wallet', placeholder: 'Paste Solana wallet address...', buildTask: (addr) => `Analyze wallet ${addr} for threats and suspicious activity` },
+  { id: 'token', label: 'Scan Token', placeholder: 'Paste token contract address...', buildTask: (addr) => `Scan token ${addr} for rug pull risks and security vulnerabilities` },
+  { id: 'transaction', label: 'Investigate Transaction', placeholder: 'Paste transaction signature...', buildTask: (addr) => `Investigate transaction ${addr} for malicious patterns` },
 ]
+
+const EXAMPLES = [
+  { type: 'wallet', address: '8NtDWpGCZBD6bjbuoKJfWuzg2Ux8hKij6naHov7hAhe9' },
+  { type: 'token', address: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v' },
+]
+
+function withTimeout(promise, ms) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error('Agent timeout')), ms))
+  ])
+}
+
+function getVerdict(text) {
+  const upper = (text || '').toUpperCase()
+  if (upper.includes('CRITICAL')) return 'CRITICAL'
+  if (upper.includes('HIGH')) return 'HIGH'
+  if (upper.includes('MEDIUM')) return 'MEDIUM'
+  if (upper.includes('LOW')) return 'LOW'
+  return 'SAFE'
+}
+
+const VERDICT_STYLES = {
+  SAFE: { bg: 'rgba(16,185,129,0.12)', border: 'rgba(16,185,129,0.3)', color: '#10b981' },
+  LOW: { bg: 'rgba(96,165,250,0.12)', border: 'rgba(96,165,250,0.3)', color: '#60a5fa' },
+  MEDIUM: { bg: 'rgba(251,191,36,0.12)', border: 'rgba(251,191,36,0.3)', color: '#fbbf24' },
+  HIGH: { bg: 'rgba(248,113,113,0.12)', border: 'rgba(248,113,113,0.3)', color: '#f87171' },
+  CRITICAL: { bg: 'rgba(239,68,68,0.15)', border: 'rgba(239,68,68,0.35)', color: '#ef4444' },
+}
 
 export default function ConsolePage() {
   const { shortAddress } = useWallet()
   const { addProof } = useProofs()
   const { addMission } = useMissions()
 
-  const [task, setTask] = useState('')
+  const [taskType, setTaskType] = useState('wallet')
+  const [address, setAddress] = useState('')
   const [status, setStatus] = useState('idle')
   const [lines, setLines] = useState([])
   const [proofCards, setProofCards] = useState([])
   const [isDemo, setIsDemo] = useState(false)
-  const [missionStart, setMissionStart] = useState(null)
-  const consoleRef = useRef(null)
+  const [summary, setSummary] = useState(null)
+  const [cooldown, setCooldown] = useState(0)
+  const consoleEndRef = useRef(null)
 
-  const addLine = useCallback((agentName, message, hash) => {
-    return new Promise(resolve => {
-      setLines(prev => [...prev, { agentName, message, hash }])
-      setTimeout(resolve, 800)
-    })
+  useEffect(() => {
+    if (status !== 'complete') return
+    setCooldown(60)
+    const interval = setInterval(() => {
+      setCooldown(prev => {
+        if (prev <= 1) { clearInterval(interval); return 0 }
+        return prev - 1
+      })
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [status])
+
+  const currentType = TASK_TYPES.find(t => t.id === taskType)
+  const taskString = currentType.buildTask(address.trim())
+  const canRun = address.trim().length >= 32
+
+  const scrollToBottom = useCallback(() => {
+    setTimeout(() => consoleEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
   }, [])
 
   const runMission = useCallback(async () => {
-    if (!task.trim()) return
+    if (!canRun) return
+    const task = taskString
     const startTime = Date.now()
     setStatus('running')
     setLines([])
     setProofCards([])
     setIsDemo(false)
-    setMissionStart(startTime)
+    setSummary(null)
 
-    const messages = [
-      { agent: 'Orchestrator', msg: `Task received - ${task.trim()}` },
-      { agent: 'Scout', msg: 'Scanning target - analyzing transaction history' },
-      { agent: 'Analyst', msg: 'Running deep risk analysis on flagged patterns' },
-      { agent: 'Threat', msg: 'Cross-referencing known exploit databases' },
-      { agent: 'Reporter', msg: 'Compiling verified alert report' },
-    ]
+    const allResults = []
+    let anyDemo = false
 
-    for (const m of messages) {
-      await addLine(m.agent, m.msg, 'computing...')
+    const addActiveLine = (agentName) => {
+      setLines(prev => [...prev, { agentName, message: '', hash: '', active: true }])
+      scrollToBottom()
     }
 
-    try {
-      const result = await runFullMission(task.trim())
-      setIsDemo(result.isDemo)
+    const replaceActiveLine = (agentName, message, hash, failed) => {
+      setLines(prev => {
+        const idx = prev.findLastIndex(l => l.agentName === agentName && l.active)
+        if (idx === -1) return [...prev, { agentName, message, hash, active: false, failed }]
+        const copy = [...prev]
+        copy[idx] = { agentName, message, hash, active: false, failed }
+        return copy
+      })
+      scrollToBottom()
+    }
 
-      setLines([])
-      const finalLines = []
-
-      for (let i = 0; i < result.results.length; i++) {
-        const r = result.results[i]
-        const shortDecision = r.result.length > 80 ? r.result.slice(0, 80) + '...' : r.result
-        const shortHash = 'sha256:' + r.proof.hash.slice(0, 8) + '...'
-        finalLines.push({ agentName: r.proof.agentName, message: shortDecision, hash: shortHash })
-        setLines([...finalLines])
-        addProof(r.proof)
-        setProofCards(prev => [...prev, r])
-        await new Promise(r => setTimeout(r, 800))
+    const runSingleAgent = async (name, runFn, args) => {
+      addActiveLine(name)
+      try {
+        const result = await withTimeout(runFn(...args), 60000)
+        allResults.push(result)
+        if (result.isDemo) anyDemo = true
+        const clean = stripMarkdown(result.result)
+        const short = clean.length > 120 ? clean.slice(0, 120) + '...' : clean
+        replaceActiveLine(name, short, 'sha256:' + result.proof.hash.slice(0, 8) + '...')
+        addProof(result.proof)
+        setProofCards(prev => [...prev, { ...result, result: clean }])
+        return result
+      } catch (err) {
+        console.warn(`${name} failed:`, err.message)
+        replaceActiveLine(name, 'Agent timed out or failed', '', true)
+        return null
       }
+    }
 
-      const verdictMsg = `VERDICT: ${result.verdict} - ${result.results[4]?.result.slice(0, 60) || 'Analysis complete'}...`
-      const verdictHash = 'sha256:' + (result.results[4]?.proof.hash.slice(0, 8) || 'ecf7') + '...'
-      finalLines.push({ agentName: 'Orchestrator', message: verdictMsg, hash: verdictHash, isVerdict: true })
-      setLines([...finalLines])
+    const missionTimeout = setTimeout(() => {
+      setLines(prev => [...prev, {
+        agentName: 'Orchestrator',
+        message: 'VERDICT: Mission timed out - partial results shown',
+        hash: '',
+        active: false,
+        isVerdict: true,
+      }])
 
       const elapsed = ((Date.now() - startTime) / 1000).toFixed(1)
+      const lastResult = allResults[allResults.length - 1]
+      const verdict = lastResult ? getVerdict(lastResult.result) : 'MEDIUM'
+
+      setSummary({
+        verdict,
+        reporterSummary: 'Mission timed out - showing partial results from completed agents',
+        proofCount: allResults.length,
+        elapsed: elapsed + 's',
+      })
+
+      setIsDemo(anyDemo)
+      addMission({
+        task: task.trim(),
+        timestamp: new Date().toISOString(),
+        agentCount: allResults.length,
+        verdict,
+        proofCount: allResults.length,
+        duration: elapsed + 's',
+        isDemo: anyDemo,
+        results: allResults.map(r => ({ agentName: r.proof.agentName, decision: stripMarkdown(r.result), hash: r.proof.hash })),
+        proofs: allResults.map(r => r.proof),
+      })
+
+      setStatus('complete')
+    }, 90000)
+
+    try {
+      const orch = await runSingleAgent('Orchestrator', runOrchestrator, [task.trim()])
+
+      const scout = await runSingleAgent('Scout', runScout, [task.trim()])
+
+      const scoutResult = scout ? scout.result : task.trim()
+      const analyst = await runSingleAgent('Analyst', runAnalyst, [scoutResult])
+
+      const analystResult = analyst ? analyst.result : ''
+      const threat = await runSingleAgent('Threat', runThreat, [scoutResult + ' ' + analystResult])
+
+      const allFindings = allResults.map(r => r.result).join('\n')
+      const reporter = await runSingleAgent('Reporter', runReporter, [allFindings])
+
+      clearTimeout(missionTimeout)
+
+      const reporterText = reporter ? stripMarkdown(reporter.result) : (allResults.length > 0 ? stripMarkdown(allResults[allResults.length - 1].result) : 'Analysis complete')
+      const verdict = getVerdict(reporterText)
+
+      const verdictShort = reporterText.length > 60 ? reporterText.slice(0, 60) + '...' : reporterText
+      setLines(prev => [...prev, {
+        agentName: 'Orchestrator',
+        message: `VERDICT: ${verdict} - ${verdictShort}`,
+        hash: reporter ? 'sha256:' + reporter.proof.hash.slice(0, 8) + '...' : '',
+        active: false,
+        isVerdict: true,
+      }])
+      scrollToBottom()
+
+      setIsDemo(anyDemo)
+
+      const elapsed = ((Date.now() - startTime) / 1000).toFixed(1)
+
+      setSummary({
+        verdict,
+        reporterSummary: reporterText.length > 200 ? reporterText.slice(0, 200) + '...' : reporterText,
+        proofCount: allResults.length,
+        elapsed: elapsed + 's',
+      })
+
       addMission({
         task: task.trim(),
         timestamp: new Date().toISOString(),
         agentCount: 5,
-        verdict: result.verdict,
-        proofCount: result.results.length,
+        verdict,
+        proofCount: allResults.length,
         duration: elapsed + 's',
-        isDemo: result.isDemo,
-        results: result.results.map(r => ({
-          agentName: r.proof.agentName,
-          decision: r.result,
-          hash: r.proof.hash,
-        })),
-        proofs: result.results.map(r => r.proof),
+        isDemo: anyDemo,
+        results: allResults.map(r => ({ agentName: r.proof.agentName, decision: stripMarkdown(r.result), hash: r.proof.hash })),
+        proofs: allResults.map(r => r.proof),
       })
 
       setStatus('complete')
     } catch (err) {
+      clearTimeout(missionTimeout)
       console.error('Mission failed:', err)
-      setStatus('error')
+
+      const elapsed = ((Date.now() - startTime) / 1000).toFixed(1)
+      const lastResult = allResults[allResults.length - 1]
+      const verdict = lastResult ? getVerdict(lastResult.result) : 'MEDIUM'
+
+      setSummary({
+        verdict,
+        reporterSummary: 'Mission encountered an error - showing partial results',
+        proofCount: allResults.length,
+        elapsed: elapsed + 's',
+      })
+
+      if (allResults.length > 0) {
+        addMission({
+          task: task.trim(),
+          timestamp: new Date().toISOString(),
+          agentCount: allResults.length,
+          verdict,
+          proofCount: allResults.length,
+          duration: elapsed + 's',
+          isDemo: anyDemo,
+          results: allResults.map(r => ({ agentName: r.proof.agentName, decision: stripMarkdown(r.result), hash: r.proof.hash })),
+          proofs: allResults.map(r => r.proof),
+        })
+      }
+
+      setStatus('complete')
     }
-  }, [task, addLine, addProof, addMission])
+  }, [canRun, taskString, addProof, addMission, scrollToBottom])
+
+  const resetMission = () => {
+    setStatus('idle')
+    setAddress('')
+    setLines([])
+    setProofCards([])
+    setIsDemo(false)
+    setSummary(null)
+  }
 
   return (
     <DashboardLayout>
@@ -130,44 +283,67 @@ export default function ConsolePage() {
           </div>
         )}
 
-        <div className="mission-input-area">
-          <textarea
-            className="mission-textarea"
-            placeholder="Describe a task for the agent network..."
-            value={task}
-            onChange={e => setTask(e.target.value)}
-            disabled={status === 'running'}
-            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); runMission() } }}
-          />
-        </div>
-
-        <div className="mission-chips">
-          {EXAMPLE_TASKS.map(t => (
+        <div className="mission-type-selector">
+          {TASK_TYPES.map(t => (
             <button
-              key={t}
-              className="mission-chip"
-              onClick={() => setTask(t)}
+              key={t.id}
+              className={`mission-type-btn ${taskType === t.id ? 'active' : ''}`}
+              onClick={() => setTaskType(t.id)}
               disabled={status === 'running'}
             >
-              {t}
+              {t.label}
             </button>
           ))}
         </div>
 
+        <div className="mission-input-area">
+          <input
+            type="text"
+            className="mission-address-input"
+            placeholder={currentType.placeholder}
+            value={address}
+            onChange={e => setAddress(e.target.value)}
+            disabled={status === 'running'}
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); runMission() } }}
+          />
+        </div>
+
+        <div className="mission-examples">
+          <div className="mission-examples-label">Try an example:</div>
+          <div className="mission-examples-row">
+            {EXAMPLES.map(ex => (
+              <button
+                key={ex.address}
+                className="mission-example-chip"
+                onClick={() => { setTaskType(ex.type); setAddress(ex.address) }}
+                disabled={status === 'running'}
+              >
+                {ex.address}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="mission-actions">
           {status === 'complete' ? (
-            <button className="btn-run" onClick={() => { setStatus('idle'); setTask(''); setLines([]); setProofCards([]); setIsDemo(false) }}>
-              Run New Mission
-            </button>
+            <div className="mission-actions-wrap">
+              <button className="btn-run" onClick={resetMission}>Run New Mission</button>
+              {cooldown > 0 && (
+                <span className="cooldown-text">Cooldown - ready in {cooldown}s</span>
+              )}
+              {cooldown === 0 && (
+                <span className="cooldown-ready">Ready for next mission</span>
+              )}
+            </div>
           ) : (
-            <button className="btn-run" onClick={runMission} disabled={status === 'running' || !task.trim()}>
+            <button className="btn-run" onClick={runMission} disabled={status === 'running' || !canRun}>
               {status === 'running' ? 'Running...' : 'Run Mission'}
             </button>
           )}
         </div>
 
         {lines.length > 0 && (
-          <div className="live-console" ref={consoleRef}>
+          <div className="live-console">
             <div className="live-console-topbar">
               <div className="win-dot wd-r" />
               <div className="win-dot wd-y" />
@@ -177,22 +353,41 @@ export default function ConsolePage() {
             <div className="live-console-body">
               {lines.map((line, i) => (
                 <div className="live-line" key={i}>
-                  <span className={`live-agent ${AGENT_COLORS[line.agentName] || 'color-orch'}`}>
+                  <span className={`live-agent ${line.failed ? 'color-failed' : (AGENT_COLORS[line.agentName] || 'color-orch')}`}>
                     {line.agentName?.toUpperCase()}
                   </span>
-                  <span className="live-msg">
-                    {line.message}
-                    {i === lines.length - 1 && status === 'running' && <span className="cursor-blink" />}
+                  <span className={`live-msg ${line.failed ? 'live-msg-failed' : ''}`}>
+                    {line.active ? (
+                      <>{line.agentName} working<span className="cursor-blink" /></>
+                    ) : (
+                      line.message
+                    )}
                   </span>
                   <span className="live-hash">{line.hash}</span>
                 </div>
               ))}
+              <div ref={consoleEndRef} />
             </div>
-            {status === 'complete' && (
-              <div style={{ padding: '0 20px 16px' }}>
-                <div className="mission-complete-badge">Mission Complete</div>
-              </div>
-            )}
+          </div>
+        )}
+
+        {status === 'complete' && summary && (
+          <div className="mission-summary">
+            <div
+              className="mission-verdict-badge"
+              style={{
+                background: VERDICT_STYLES[summary.verdict]?.bg,
+                borderColor: VERDICT_STYLES[summary.verdict]?.border,
+                color: VERDICT_STYLES[summary.verdict]?.color,
+              }}
+            >
+              {summary.verdict}
+            </div>
+            <div className="mission-summary-text">{summary.reporterSummary}</div>
+            <div className="mission-summary-meta">
+              <span>{summary.proofCount} proofs generated</span>
+              <span>{summary.elapsed}</span>
+            </div>
           </div>
         )}
 

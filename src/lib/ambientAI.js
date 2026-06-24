@@ -9,43 +9,84 @@ async function sha256(text) {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
 }
 
+export function stripMarkdown(text) {
+  return text
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/__([^_]+)__/g, '$1')
+    .replace(/_([^_]+)_/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/^[-*+]\s+/gm, '')
+    .replace(/^\d+\.\s+/gm, '')
+    .replace(/^---+$/gm, '')
+    .replace(/\|/g, '')
+    .replace(/^>\s+/gm, '')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
+let requestQueue = Promise.resolve()
+
+function enqueue(fn) {
+  const task = requestQueue.then(fn, fn)
+  requestQueue = task.catch(() => {})
+  return task
+}
+
 async function callAmbient(systemPrompt, userPrompt, retries = 3) {
-  const delays = [1000, 2000, 4000]
-  let lastError = null
+  return enqueue(async () => {
+    const delays = [3000, 6000, 12000]
+    let lastError = null
 
-  for (let i = 0; i < retries; i++) {
-    try {
-      const response = await fetch(API_URL, {
-        method: 'POST',
-        headers: {
-          'Authorization': 'Bearer ' + import.meta.env.VITE_AMBIENT_API_KEY,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          model: MODEL,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt }
-          ],
-          stream: false
+    for (let i = 0; i < retries; i++) {
+      try {
+        const controller = new AbortController()
+        const timeout = setTimeout(() => controller.abort(), 60000)
+
+        const response = await fetch(API_URL, {
+          method: 'POST',
+          headers: {
+            'Authorization': 'Bearer ' + import.meta.env.VITE_AMBIENT_API_KEY,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: MODEL,
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userPrompt }
+            ],
+            stream: false
+          }),
+          signal: controller.signal
         })
-      })
 
-      if (!response.ok) throw new Error(`API error: ${response.status}`)
+        clearTimeout(timeout)
 
-      const data = await response.json()
-      const text = data.choices[0].message.content
-      return { text, isDemo: false }
-    } catch (err) {
-      lastError = err
-      if (i < retries - 1) {
-        await new Promise(r => setTimeout(r, delays[i]))
+        if (response.status === 429) {
+          lastError = new Error('Rate limited (429)')
+          await new Promise(r => setTimeout(r, 8000))
+          continue
+        }
+
+        if (!response.ok) throw new Error(`API error: ${response.status}`)
+
+        const data = await response.json()
+        const text = stripMarkdown(data.choices[0].message.content)
+        await new Promise(r => setTimeout(r, 2000))
+        return { text, isDemo: false }
+      } catch (err) {
+        lastError = err
+        if (i < retries - 1) {
+          await new Promise(r => setTimeout(r, delays[i]))
+        }
       }
     }
-  }
 
-  console.warn('Ambient API failed after retries:', lastError)
-  return null
+    console.warn('Ambient API failed after retries:', lastError)
+    return null
+  })
 }
 
 async function buildProof(text, agentName) {
@@ -62,15 +103,15 @@ async function buildProof(text, agentName) {
 }
 
 const SYSTEM_PROMPTS = {
-  orchestrator: `You are the Orchestrator agent for AmbientMind, a verified multi-agent intelligence network on Ambient Network. Your role is to analyze incoming tasks, determine which agents should be activated, and synthesize a final verdict. Be concise and precise. Format your analysis in clear steps. Never use em dashes - use hyphens instead. Do not use emojis.`,
+  orchestrator: `You are the Orchestrator agent for AmbientMind, a verified multi-agent AI security intelligence network built on Ambient Network. Your role is to receive security analysis tasks, break them down into a clear execution plan, coordinate the other agents, and synthesize a final verdict. You reason based on AI security knowledge and pattern analysis. Be concise and direct. Output plain text only - no markdown headers, no bullet symbols, no bold formatting, no tables. Never use em dashes, use hyphens instead.`,
 
-  scout: `You are the Scout Agent for AmbientMind. Your role is to monitor Solana wallets and tokens, scanning for suspicious patterns like unusual transaction volumes, rapid token movements, connections to flagged addresses, or signs of wash trading. Report findings concisely with specific data points. Never use em dashes - use hyphens instead. Do not use emojis.`,
+  scout: `You are the Scout Agent for AmbientMind. Your role is to perform initial pattern analysis on Solana wallet addresses and token contracts provided by the user. Based on the address characteristics, known Solana ecosystem patterns, and security intelligence from your training, identify potential risk indicators such as: wallet age patterns, typical rug pull address structures, known mixer address formats, suspicious token naming patterns, and common scam deployment patterns. You are an AI reasoning agent - analyze based on patterns and knowledge, not live blockchain queries. Be specific and concise. Output plain text only - no markdown, no bullet symbols, no headers, no bold, no tables.`,
 
-  analyst: `You are the Analyst Agent for AmbientMind. Your role is to perform deep risk analysis on data flagged by the Scout. Calculate risk scores, identify probability of malicious intent, and assess severity levels. Provide numerical risk assessments and clear reasoning. Never use em dashes - use hyphens instead. Do not use emojis.`,
+  analyst: `You are the Analyst Agent for AmbientMind. Your role is to perform deep risk analysis on findings provided by the Scout Agent. Calculate a risk score from 0 to 100, identify probability of malicious intent, assess severity as SAFE, LOW, MEDIUM, HIGH, or CRITICAL, and provide clear reasoning. Base your analysis on Solana security patterns, DeFi exploit history, and known attack vectors from your training knowledge. Be specific with numbers. Output plain text only - no markdown, no bullet symbols, no headers, no bold, no tables.`,
 
-  threat: `You are the Threat Agent for AmbientMind. Your role is to cross-reference findings against known bad actors, documented exploit patterns, rug pull signatures, and historical Solana scam databases. Identify matching threat patterns and their severity. Never use em dashes - use hyphens instead. Do not use emojis.`,
+  threat: `You are the Threat Agent for AmbientMind. Your role is to cross-reference findings against known Solana exploit patterns, documented rug pulls, mixer signatures, and historical attack vectors from your training knowledge. Identify matching threat patterns by name where possible, estimate similarity percentages, and assess the overall threat classification. Output plain text only - no markdown, no bullet symbols, no headers, no bold, no tables.`,
 
-  reporter: `You are the Reporter Agent for AmbientMind. Your role is to synthesize all agent findings into a clear, actionable alert report. Summarize the threat level (SAFE, LOW, MEDIUM, HIGH, CRITICAL), key findings, and recommended actions. Be direct and concise. Never use em dashes - use hyphens instead. Do not use emojis.`,
+  reporter: `You are the Reporter Agent for AmbientMind. Your role is to synthesize all agent findings into a clear, direct, actionable security report. State the threat level clearly as one of: SAFE, LOW, MEDIUM, HIGH, or CRITICAL. Summarize the key findings in 2-3 plain sentences. State a clear recommended action. Be direct and human-readable. Output plain text only - no markdown, no bullet symbols, no headers, no bold, no tables. Never use em dashes.`,
 }
 
 const DEMO_RESPONSES = {
@@ -100,67 +141,30 @@ async function runAgent(agentName, systemKey, userPrompt, demoFn, demoArg) {
 
 export async function runOrchestrator(task) {
   return runAgent('Orchestrator', 'orchestrator',
-    `Analyze this task and determine how to coordinate the agent network: ${task}`,
+    `Security task received: ${task}. Break this down and coordinate the agent network to analyze it.`,
     DEMO_RESPONSES.orchestrator, task)
 }
 
-export async function runScout(walletAddress) {
+export async function runScout(target) {
   return runAgent('Scout', 'scout',
-    `Scan the following target for suspicious activity and patterns: ${walletAddress}`,
-    DEMO_RESPONSES.scout, walletAddress)
+    `Perform initial security pattern analysis on this Solana target: ${target}. Identify potential risk indicators based on known patterns and security intelligence.`,
+    DEMO_RESPONSES.scout, target)
 }
 
-export async function runAnalyst(data) {
+export async function runAnalyst(scoutResult) {
   return runAgent('Analyst', 'analyst',
-    `Perform deep risk analysis on these findings: ${data}`,
-    DEMO_RESPONSES.analyst, data)
+    `Perform deep risk analysis based on this Scout report: ${scoutResult}. Provide a risk score, severity level, and clear reasoning.`,
+    DEMO_RESPONSES.analyst, scoutResult)
 }
 
 export async function runThreat(data) {
   return runAgent('Threat', 'threat',
-    `Cross-reference these findings against known bad actors and exploit patterns: ${data}`,
+    `Cross-reference these findings against known Solana threat patterns: ${data}. Identify matching exploit signatures and threat classifications.`,
     DEMO_RESPONSES.threat, data)
 }
 
 export async function runReporter(findings) {
   return runAgent('Reporter', 'reporter',
-    `Generate a final verified alert report based on all agent findings: ${findings}`,
+    `Generate a final security report based on all agent findings: ${findings}. State threat level, key findings in 2-3 sentences, and recommended action.`,
     DEMO_RESPONSES.reporter, findings)
-}
-
-export async function runFullMission(task, walletAddress) {
-  const results = []
-  let isDemo = false
-
-  const orch = await runOrchestrator(task)
-  results.push(orch)
-  if (orch.isDemo) isDemo = true
-
-  const target = walletAddress || task
-  const scout = await runScout(target)
-  results.push(scout)
-  if (scout.isDemo) isDemo = true
-
-  const analyst = await runAnalyst(scout.result)
-  results.push(analyst)
-  if (analyst.isDemo) isDemo = true
-
-  const threat = await runThreat(scout.result + ' ' + analyst.result)
-  results.push(threat)
-  if (threat.isDemo) isDemo = true
-
-  const allFindings = results.map(r => r.result).join('\n')
-  const reporter = await runReporter(allFindings)
-  results.push(reporter)
-  if (reporter.isDemo) isDemo = true
-
-  const verdictText = reporter.result
-  let verdict = 'SAFE'
-  const upper = verdictText.toUpperCase()
-  if (upper.includes('CRITICAL')) verdict = 'CRITICAL'
-  else if (upper.includes('HIGH')) verdict = 'HIGH'
-  else if (upper.includes('MEDIUM')) verdict = 'MEDIUM'
-  else if (upper.includes('LOW')) verdict = 'LOW'
-
-  return { results, verdict, isDemo }
 }

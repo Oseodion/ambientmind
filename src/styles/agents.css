@@ -49,15 +49,13 @@
 /* Orchestrator - Full Width */
 .an-card {
   background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.08);
   border-radius: 16px;
-  border-left: 3px solid transparent;
   transition: all 0.2s;
 }
 
 .an-card:hover {
   border-color: rgba(255,255,255,0.12);
-  border-left-width: 3px;
   transform: translateY(-2px);
 }
 
@@ -71,7 +69,6 @@
   margin-bottom: 12px;
 }
 
-.an-card-orch:hover { border-left-color: #10b981; }
 
 .an-card-orch-left { flex: 1; }
 
@@ -146,7 +143,6 @@
   flex-direction: column;
 }
 
-.an-card-sm:hover { border-left-width: 3px; }
 
 .an-card-sm-top {
   display: flex;

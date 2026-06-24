@@ -59,7 +59,7 @@ export default function AgentNetworkPage() {
         </div>
 
         <div className="an-bento">
-          <div className="an-card an-card-orch" style={{ borderLeftColor: orchestrator.color }}>
+          <div className="an-card an-card-orch">
             <div className="an-card-orch-left">
               <div className="an-card-name-lg">{orchestrator.name}</div>
               <div className="an-card-role">{orchestrator.role}</div>
@@ -79,7 +79,7 @@ export default function AgentNetworkPage() {
               const stats = agentStats[agent.name]
               const hasActivity = stats.proofCount > 0
               return (
-                <div className="an-card an-card-sm" key={agent.name} style={{ borderLeftColor: agent.color }}>
+                <div className="an-card an-card-sm" key={agent.name}>
                   <div className="an-card-sm-top">
                     <div className="an-card-name">{agent.name}</div>
                     <div className="an-status-badge">

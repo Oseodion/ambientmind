@@ -45,18 +45,16 @@
   text-decoration: none;
   transition: all 0.15s;
   white-space: nowrap;
-  border-left: 2px solid transparent;
 }
 
 .dash-nav-item:hover {
   color: rgba(255,255,255,0.7);
-  background: rgba(255,255,255,0.04);
+  background: rgba(255,255,255,0.03);
 }
 
 .dash-nav-item.active {
   color: #a78bfa;
   background: rgba(167,139,250,0.08);
-  border-left-color: #a78bfa;
 }
 
 .dash-sidebar-bottom {
