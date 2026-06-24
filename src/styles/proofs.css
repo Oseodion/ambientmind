@@ -166,22 +166,31 @@
 
 .proof-list-model { color: #10b981; }
 
-.proof-list-hash {
+.proof-list-hash-full {
   color: rgba(255,170,0,0.5);
-  cursor: pointer;
-  transition: color 0.15s;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 200px;
+  word-break: break-all;
+  line-height: 1.5;
 }
 
-.proof-list-hash:hover { color: rgba(255,170,0,0.8); }
+.proof-copy-btn {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 4px;
+  padding: 3px 6px;
+  cursor: pointer;
+  color: rgba(255,255,255,0.35);
+  display: inline-flex;
+  align-items: center;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
 
-.proof-list-hash.expanded {
-  max-width: none;
-  white-space: normal;
-  word-break: break-all;
+.proof-copy-btn:hover { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.6); }
+
+.proof-copied-text {
+  font-size: 9px;
+  color: #10b981;
+  font-family: 'IBM Plex Mono', monospace;
 }
 
 .proof-list-chain {

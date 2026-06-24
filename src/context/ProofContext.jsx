@@ -1,19 +1,20 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { createContext, useContext, useState, useCallback } from 'react'
 
 const ProofContext = createContext(null)
 
 const STORAGE_KEY = 'ambientmind_proofs'
 const MAX_PROOFS = 100
 
-export function ProofProvider({ children }) {
-  const [proofs, setProofs] = useState([])
+function loadProofs() {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY)
+    if (stored) return JSON.parse(stored)
+  } catch {}
+  return []
+}
 
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY)
-      if (stored) setProofs(JSON.parse(stored))
-    } catch {}
-  }, [])
+export function ProofProvider({ children }) {
+  const [proofs, setProofs] = useState(loadProofs)
 
   const persist = useCallback((updated) => {
     const trimmed = updated.slice(0, MAX_PROOFS)
@@ -23,6 +24,7 @@ export function ProofProvider({ children }) {
 
   const addProof = useCallback((proof) => {
     setProofs(prev => {
+      if (prev.some(p => p.id === proof.id)) return prev
       const updated = [{ ...proof, id: proof.id || crypto.randomUUID() }, ...prev]
       return persist(updated)
     })

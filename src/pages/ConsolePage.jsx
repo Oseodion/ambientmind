@@ -156,7 +156,7 @@ export default function ConsolePage() {
         })
       }
 
-      if (failedCount > 0) setRateLimited(true)
+      if (failedCount >= 3) setRateLimited(true)
       setStatus('complete')
     }, 600000)
 
@@ -204,7 +204,7 @@ export default function ConsolePage() {
         })
       }
 
-      if (failedCount > 0) setRateLimited(true)
+      if (failedCount >= 3) setRateLimited(true)
       setStatus('complete')
     } catch (err) {
       clearTimeout(missionTimeout)
@@ -233,7 +233,7 @@ export default function ConsolePage() {
         })
       }
 
-      setRateLimited(true)
+      if (failedCount >= 3) setRateLimited(true)
       setStatus('complete')
     }
   }, [canRun, taskString, addProof, addMission, scrollToBottom])

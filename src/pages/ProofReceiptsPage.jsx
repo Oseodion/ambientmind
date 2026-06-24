@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import DashboardLayout from '../components/DashboardLayout'
 import { useProofs } from '../context/ProofContext'
 import '../styles/proofs.css'
@@ -19,7 +19,13 @@ export default function ProofReceiptsPage() {
   const [agentFilter, setAgentFilter] = useState('All')
   const [verifiedFilter, setVerifiedFilter] = useState('All')
   const [search, setSearch] = useState('')
-  const [expandedHash, setExpandedHash] = useState(null)
+  const [copiedId, setCopiedId] = useState(null)
+
+  const copyHash = useCallback((id, hash) => {
+    navigator.clipboard.writeText(hash)
+    setCopiedId(id)
+    setTimeout(() => setCopiedId(prev => prev === id ? null : prev), 2000)
+  }, [])
 
   const filtered = useMemo(() => {
     return proofs.filter(p => {
@@ -108,12 +114,14 @@ export default function ProofReceiptsPage() {
                 <div className="proof-list-decision">{p.decision}</div>
                 <div className="proof-list-footer">
                   <span className="proof-list-model">{p.model}</span>
-                  <span
-                    className={`proof-list-hash ${expandedHash === p.id ? 'expanded' : ''}`}
-                    onClick={() => setExpandedHash(expandedHash === p.id ? null : p.id)}
-                  >
-                    sha256:{expandedHash === p.id ? p.hash : p.hash.slice(0, 16) + '...'}
-                  </span>
+                  <span className="proof-list-hash-full">sha256:{p.hash}</span>
+                  <button className="proof-copy-btn" onClick={() => copyHash(p.id, p.hash)}>
+                    {copiedId === p.id ? (
+                      <span className="proof-copied-text">Copied</span>
+                    ) : (
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                    )}
+                  </button>
                   <a
                     href="https://explorer.ambient.xyz"
                     target="_blank"
