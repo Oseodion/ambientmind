@@ -131,25 +131,29 @@ async function runAgent(agentName, systemKey, userPrompt) {
 
 export async function runOrchestrator(task) {
   return runAgent('Orchestrator', 'orchestrator',
-    `Security task received: ${task}. Break this down and coordinate the agent network to analyze it.`)
+    `Security task received: ${task}. Break this down into an execution plan for the agent network. Specify what the Scout, Analyst, Threat, and Reporter agents should each focus on.`)
 }
 
-export async function runScout(target) {
+export async function runScout(task, orchestratorResult) {
   return runAgent('Scout', 'scout',
-    `Perform initial security pattern analysis on this Solana target: ${target}. Identify potential risk indicators based on known patterns and security intelligence.`)
+    `Task: ${task}\n\nOrchestrator plan: ${orchestratorResult}\n\nPerform initial security pattern analysis on the Solana target specified in this task. Identify potential risk indicators based on known patterns and security intelligence.`)
 }
 
-export async function runAnalyst(scoutResult) {
+export async function runAnalyst(task, scoutResult) {
   return runAgent('Analyst', 'analyst',
-    `Perform deep risk analysis based on this Scout report: ${scoutResult}. Provide a risk score, severity level, and clear reasoning.`)
+    `Task: ${task}\n\nScout findings: ${scoutResult}\n\nPerform deep risk analysis based on the Scout's findings above. Provide a risk score from 0-100, severity level, and clear reasoning.`)
 }
 
-export async function runThreat(data) {
+export async function runThreat(task, scoutResult, analystResult) {
   return runAgent('Threat', 'threat',
-    `Cross-reference these findings against known Solana threat patterns: ${data}. Identify matching exploit signatures and threat classifications.`)
+    `Task: ${task}\n\nScout findings: ${scoutResult}\n\nAnalyst assessment: ${analystResult}\n\nCross-reference the Scout and Analyst findings against known Solana threat patterns. Identify matching exploit signatures and threat classifications.`)
 }
 
-export async function runReporter(findings) {
+export async function runReporter(task, agentResults) {
+  const sections = agentResults.map(r => `${r.agentName}: ${r.result}`).join('\n\n')
+  const skippedNote = agentResults.length < 4
+    ? `\n\nNote: ${4 - agentResults.length} agent(s) did not complete due to rate limiting. Base your report on the available findings only.`
+    : ''
   return runAgent('Reporter', 'reporter',
-    `Generate a final security report based on all agent findings: ${findings}. State threat level, key findings in 2-3 sentences, and recommended action.`)
+    `Task: ${task}\n\nAgent findings:\n${sections}${skippedNote}\n\nGenerate a final security report. State threat level, key findings in 2-3 sentences, and recommended action.`)
 }

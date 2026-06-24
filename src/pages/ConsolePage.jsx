@@ -137,13 +137,16 @@ export default function ConsolePage() {
       }
     }
 
+    const skipAgent = (name, reason) => {
+      failedCount++
+      addActiveLine(name)
+      replaceActiveLine(name, reason, '', true)
+    }
+
     const missionTimeout = setTimeout(() => {
       const elapsed = ((Date.now() - startTime) / 1000).toFixed(1)
 
-      setLines(prev => {
-        const filtered = prev.filter(l => !l.active)
-        return filtered
-      })
+      setLines(prev => prev.filter(l => !l.active))
 
       if (allResults.length > 0) {
         const lastResult = allResults[allResults.length - 1]
@@ -161,12 +164,28 @@ export default function ConsolePage() {
     }, 600000)
 
     try {
-      await runSingleAgent('Orchestrator', runOrchestrator, [task])
-      const scout = await runSingleAgent('Scout', runScout, [task])
-      const analyst = await runSingleAgent('Analyst', runAnalyst, [scout ? scout.result : task])
-      const threat = await runSingleAgent('Threat', runThreat, [(scout ? scout.result : '') + ' ' + (analyst ? analyst.result : '')])
-      const allFindings = allResults.map(r => r.result).join('\n')
-      const reporter = await runSingleAgent('Reporter', runReporter, [allFindings || task])
+      const orch = await runSingleAgent('Orchestrator', runOrchestrator, [task])
+      const orchResult = orch ? orch.result : task
+
+      const scout = await runSingleAgent('Scout', runScout, [task, orchResult])
+
+      let analyst = null
+      if (scout) {
+        analyst = await runSingleAgent('Analyst', runAnalyst, [task, scout.result])
+      } else {
+        skipAgent('Analyst', 'Dependency failed - Scout did not complete')
+      }
+
+      let threat = null
+      if (scout && analyst) {
+        threat = await runSingleAgent('Threat', runThreat, [task, scout.result, analyst.result])
+      } else {
+        const missing = !scout ? 'Scout' : 'Analyst'
+        skipAgent('Threat', `Dependency failed - ${missing} did not complete`)
+      }
+
+      const agentFindings = allResults.filter(r => r.proof.agentName !== 'Orchestrator').map(r => ({ agentName: r.proof.agentName, result: r.result }))
+      const reporter = await runSingleAgent('Reporter', runReporter, [task, agentFindings])
 
       clearTimeout(missionTimeout)
 
