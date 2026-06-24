@@ -35,57 +35,61 @@ function enqueue(fn) {
   return task
 }
 
-async function callAmbient(systemPrompt, userPrompt, retries = 3) {
-  return enqueue(async () => {
-    const delays = [3000, 6000, 12000]
-    let lastError = null
+async function callAmbientOnce(systemPrompt, userPrompt) {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 90000)
 
-    for (let i = 0; i < retries; i++) {
-      try {
-        const controller = new AbortController()
-        const timeout = setTimeout(() => controller.abort(), 60000)
+  try {
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + import.meta.env.VITE_AMBIENT_API_KEY,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        stream: false
+      }),
+      signal: controller.signal
+    })
 
-        const response = await fetch(API_URL, {
-          method: 'POST',
-          headers: {
-            'Authorization': 'Bearer ' + import.meta.env.VITE_AMBIENT_API_KEY,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            model: MODEL,
-            messages: [
-              { role: 'system', content: systemPrompt },
-              { role: 'user', content: userPrompt }
-            ],
-            stream: false
-          }),
-          signal: controller.signal
-        })
+    clearTimeout(timeout)
 
-        clearTimeout(timeout)
-
-        if (response.status === 429) {
-          lastError = new Error('Rate limited (429)')
-          await new Promise(r => setTimeout(r, 8000))
-          continue
-        }
-
-        if (!response.ok) throw new Error(`API error: ${response.status}`)
-
-        const data = await response.json()
-        const text = stripMarkdown(data.choices[0].message.content)
-        await new Promise(r => setTimeout(r, 2000))
-        return { text, isDemo: false }
-      } catch (err) {
-        lastError = err
-        if (i < retries - 1) {
-          await new Promise(r => setTimeout(r, delays[i]))
-        }
-      }
+    if (response.status === 429) {
+      await new Promise(r => setTimeout(r, 8000))
+      throw new Error('Rate limited (429)')
     }
 
-    console.warn('Ambient API failed after retries:', lastError)
-    return null
+    if (!response.ok) throw new Error(`API error: ${response.status}`)
+
+    const data = await response.json()
+    const text = stripMarkdown(data.choices[0].message.content)
+    await new Promise(r => setTimeout(r, 3000))
+    return text
+  } catch (err) {
+    clearTimeout(timeout)
+    throw err
+  }
+}
+
+async function callAmbient(systemPrompt, userPrompt) {
+  return enqueue(async () => {
+    try {
+      return await callAmbientOnce(systemPrompt, userPrompt)
+    } catch (firstErr) {
+      console.warn('First attempt failed, retrying in 5s:', firstErr.message)
+      await new Promise(r => setTimeout(r, 5000))
+      try {
+        return await callAmbientOnce(systemPrompt, userPrompt)
+      } catch (secondErr) {
+        console.warn('Second attempt failed:', secondErr.message)
+        return null
+      }
+    }
   })
 }
 
@@ -114,57 +118,38 @@ const SYSTEM_PROMPTS = {
   reporter: `You are the Reporter Agent for AmbientMind. Your role is to synthesize all agent findings into a clear, direct, actionable security report. State the threat level clearly as one of: SAFE, LOW, MEDIUM, HIGH, or CRITICAL. Summarize the key findings in 2-3 plain sentences. State a clear recommended action. Be direct and human-readable. Output plain text only - no markdown, no bullet symbols, no headers, no bold, no tables. Never use em dashes.`,
 }
 
-const DEMO_RESPONSES = {
-  orchestrator: (task) => `Task received: "${task}". Routing to Scout for initial scan, then Analyst for risk scoring, Threat for pattern matching, and Reporter for final summary. All agents activated.`,
+async function runAgent(agentName, systemKey, userPrompt) {
+  const text = await callAmbient(SYSTEM_PROMPTS[systemKey], userPrompt)
 
-  scout: (target) => `Scanned target ${target || 'address'}. Found 847 transactions in last 30 days. 3 flagged for unusual patterns: rapid token swaps within 2-minute windows, interaction with 2 known mixer contracts, and a large outflow of 12,400 SOL to a newly created wallet.`,
-
-  analyst: (data) => `Risk analysis complete. Overall risk score: 87/100 (HIGH). Key factors: Transaction velocity anomaly (score 92), mixer interaction (score 85), large single transfer to new wallet (score 78). Probability of malicious activity: 73%. Confidence level: HIGH based on multi-factor correlation.`,
-
-  threat: (data) => `Cross-reference complete. Matched 2 known threat patterns: Pattern TX-4421 (rapid liquidation before rug) with 81% similarity. Pattern MX-1187 (mixer chain obfuscation) with 67% similarity. Target wallet has 1-hop connection to address flagged in the Cashio exploit (March 2022). Threat level: HIGH.`,
-
-  reporter: (findings) => `ALERT REPORT - Threat Level: CRITICAL. Target wallet shows strong indicators of malicious preparation. Key findings: 87/100 risk score, 73% malicious probability, matches 2 known exploit patterns, connected to previously flagged address. Recommended action: DO NOT INTERACT. Monitor for further activity. All 5 agents reached consensus on threat assessment.`,
-}
-
-async function runAgent(agentName, systemKey, userPrompt, demoFn, demoArg) {
-  const result = await callAmbient(SYSTEM_PROMPTS[systemKey], userPrompt)
-
-  if (result) {
-    const proof = await buildProof(result.text, agentName)
-    return { result: result.text, proof, isDemo: false }
+  if (text !== null) {
+    const proof = await buildProof(text, agentName)
+    return { result: text, proof, failed: false }
   }
 
-  const demoText = demoFn(demoArg)
-  const proof = await buildProof(demoText, agentName)
-  return { result: demoText, proof, isDemo: true }
+  return { result: null, proof: null, failed: true }
 }
 
 export async function runOrchestrator(task) {
   return runAgent('Orchestrator', 'orchestrator',
-    `Security task received: ${task}. Break this down and coordinate the agent network to analyze it.`,
-    DEMO_RESPONSES.orchestrator, task)
+    `Security task received: ${task}. Break this down and coordinate the agent network to analyze it.`)
 }
 
 export async function runScout(target) {
   return runAgent('Scout', 'scout',
-    `Perform initial security pattern analysis on this Solana target: ${target}. Identify potential risk indicators based on known patterns and security intelligence.`,
-    DEMO_RESPONSES.scout, target)
+    `Perform initial security pattern analysis on this Solana target: ${target}. Identify potential risk indicators based on known patterns and security intelligence.`)
 }
 
 export async function runAnalyst(scoutResult) {
   return runAgent('Analyst', 'analyst',
-    `Perform deep risk analysis based on this Scout report: ${scoutResult}. Provide a risk score, severity level, and clear reasoning.`,
-    DEMO_RESPONSES.analyst, scoutResult)
+    `Perform deep risk analysis based on this Scout report: ${scoutResult}. Provide a risk score, severity level, and clear reasoning.`)
 }
 
 export async function runThreat(data) {
   return runAgent('Threat', 'threat',
-    `Cross-reference these findings against known Solana threat patterns: ${data}. Identify matching exploit signatures and threat classifications.`,
-    DEMO_RESPONSES.threat, data)
+    `Cross-reference these findings against known Solana threat patterns: ${data}. Identify matching exploit signatures and threat classifications.`)
 }
 
 export async function runReporter(findings) {
   return runAgent('Reporter', 'reporter',
-    `Generate a final security report based on all agent findings: ${findings}. State threat level, key findings in 2-3 sentences, and recommended action.`,
-    DEMO_RESPONSES.reporter, findings)
+    `Generate a final security report based on all agent findings: ${findings}. State threat level, key findings in 2-3 sentences, and recommended action.`)
 }

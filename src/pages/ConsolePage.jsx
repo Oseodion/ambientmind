@@ -59,22 +59,22 @@ export default function ConsolePage() {
   const [status, setStatus] = useState('idle')
   const [lines, setLines] = useState([])
   const [proofCards, setProofCards] = useState([])
-  const [isDemo, setIsDemo] = useState(false)
   const [summary, setSummary] = useState(null)
-  const [cooldown, setCooldown] = useState(0)
+  const [rateLimited, setRateLimited] = useState(false)
+  const [retryCooldown, setRetryCooldown] = useState(0)
   const consoleEndRef = useRef(null)
 
   useEffect(() => {
-    if (status !== 'complete') return
-    setCooldown(60)
+    if (!rateLimited) return
+    setRetryCooldown(120)
     const interval = setInterval(() => {
-      setCooldown(prev => {
+      setRetryCooldown(prev => {
         if (prev <= 1) { clearInterval(interval); return 0 }
         return prev - 1
       })
     }, 1000)
     return () => clearInterval(interval)
-  }, [status])
+  }, [rateLimited])
 
   const currentType = TASK_TYPES.find(t => t.id === taskType)
   const taskString = currentType.buildTask(address.trim())
@@ -91,11 +91,11 @@ export default function ConsolePage() {
     setStatus('running')
     setLines([])
     setProofCards([])
-    setIsDemo(false)
     setSummary(null)
+    setRateLimited(false)
 
     const allResults = []
-    let anyDemo = false
+    let failedCount = 0
 
     const addActiveLine = (agentName) => {
       setLines(prev => [...prev, { agentName, message: '', hash: '', active: true }])
@@ -116,9 +116,13 @@ export default function ConsolePage() {
     const runSingleAgent = async (name, runFn, args) => {
       addActiveLine(name)
       try {
-        const result = await withTimeout(runFn(...args), 60000)
+        const result = await withTimeout(runFn(...args), 90000)
+        if (result.failed) {
+          failedCount++
+          replaceActiveLine(name, 'Rate limited - skipped', '', true)
+          return null
+        }
         allResults.push(result)
-        if (result.isDemo) anyDemo = true
         const clean = stripMarkdown(result.result)
         const short = clean.length > 120 ? clean.slice(0, 120) + '...' : clean
         replaceActiveLine(name, short, 'sha256:' + result.proof.hash.slice(0, 8) + '...')
@@ -126,130 +130,110 @@ export default function ConsolePage() {
         setProofCards(prev => [...prev, { ...result, result: clean }])
         return result
       } catch (err) {
+        failedCount++
         console.warn(`${name} failed:`, err.message)
-        replaceActiveLine(name, 'Agent timed out or failed', '', true)
+        replaceActiveLine(name, 'Rate limited - skipped', '', true)
         return null
       }
     }
 
     const missionTimeout = setTimeout(() => {
-      setLines(prev => [...prev, {
-        agentName: 'Orchestrator',
-        message: 'VERDICT: Mission timed out - partial results shown',
-        hash: '',
-        active: false,
-        isVerdict: true,
-      }])
-
-      const elapsed = ((Date.now() - startTime) / 1000).toFixed(1)
-      const lastResult = allResults[allResults.length - 1]
-      const verdict = lastResult ? getVerdict(lastResult.result) : 'MEDIUM'
-
-      setSummary({
-        verdict,
-        reporterSummary: 'Mission timed out - showing partial results from completed agents',
-        proofCount: allResults.length,
-        elapsed: elapsed + 's',
-      })
-
-      setIsDemo(anyDemo)
-      addMission({
-        task: task.trim(),
-        timestamp: new Date().toISOString(),
-        agentCount: allResults.length,
-        verdict,
-        proofCount: allResults.length,
-        duration: elapsed + 's',
-        isDemo: anyDemo,
-        results: allResults.map(r => ({ agentName: r.proof.agentName, decision: stripMarkdown(r.result), hash: r.proof.hash })),
-        proofs: allResults.map(r => r.proof),
-      })
-
-      setStatus('complete')
-    }, 90000)
-
-    try {
-      const orch = await runSingleAgent('Orchestrator', runOrchestrator, [task.trim()])
-
-      const scout = await runSingleAgent('Scout', runScout, [task.trim()])
-
-      const scoutResult = scout ? scout.result : task.trim()
-      const analyst = await runSingleAgent('Analyst', runAnalyst, [scoutResult])
-
-      const analystResult = analyst ? analyst.result : ''
-      const threat = await runSingleAgent('Threat', runThreat, [scoutResult + ' ' + analystResult])
-
-      const allFindings = allResults.map(r => r.result).join('\n')
-      const reporter = await runSingleAgent('Reporter', runReporter, [allFindings])
-
-      clearTimeout(missionTimeout)
-
-      const reporterText = reporter ? stripMarkdown(reporter.result) : (allResults.length > 0 ? stripMarkdown(allResults[allResults.length - 1].result) : 'Analysis complete')
-      const verdict = getVerdict(reporterText)
-
-      const verdictShort = reporterText.length > 60 ? reporterText.slice(0, 60) + '...' : reporterText
-      setLines(prev => [...prev, {
-        agentName: 'Orchestrator',
-        message: `VERDICT: ${verdict} - ${verdictShort}`,
-        hash: reporter ? 'sha256:' + reporter.proof.hash.slice(0, 8) + '...' : '',
-        active: false,
-        isVerdict: true,
-      }])
-      scrollToBottom()
-
-      setIsDemo(anyDemo)
-
       const elapsed = ((Date.now() - startTime) / 1000).toFixed(1)
 
-      setSummary({
-        verdict,
-        reporterSummary: reporterText.length > 200 ? reporterText.slice(0, 200) + '...' : reporterText,
-        proofCount: allResults.length,
-        elapsed: elapsed + 's',
-      })
-
-      addMission({
-        task: task.trim(),
-        timestamp: new Date().toISOString(),
-        agentCount: 5,
-        verdict,
-        proofCount: allResults.length,
-        duration: elapsed + 's',
-        isDemo: anyDemo,
-        results: allResults.map(r => ({ agentName: r.proof.agentName, decision: stripMarkdown(r.result), hash: r.proof.hash })),
-        proofs: allResults.map(r => r.proof),
-      })
-
-      setStatus('complete')
-    } catch (err) {
-      clearTimeout(missionTimeout)
-      console.error('Mission failed:', err)
-
-      const elapsed = ((Date.now() - startTime) / 1000).toFixed(1)
-      const lastResult = allResults[allResults.length - 1]
-      const verdict = lastResult ? getVerdict(lastResult.result) : 'MEDIUM'
-
-      setSummary({
-        verdict,
-        reporterSummary: 'Mission encountered an error - showing partial results',
-        proofCount: allResults.length,
-        elapsed: elapsed + 's',
+      setLines(prev => {
+        const filtered = prev.filter(l => !l.active)
+        return filtered
       })
 
       if (allResults.length > 0) {
+        const lastResult = allResults[allResults.length - 1]
+        const verdict = getVerdict(lastResult.result)
+        setSummary({
+          verdict,
+          reporterSummary: stripMarkdown(lastResult.result).slice(0, 200),
+          proofCount: allResults.length,
+          elapsed: elapsed + 's',
+        })
+      }
+
+      if (failedCount > 0) setRateLimited(true)
+      setStatus('complete')
+    }, 600000)
+
+    try {
+      await runSingleAgent('Orchestrator', runOrchestrator, [task])
+      const scout = await runSingleAgent('Scout', runScout, [task])
+      const analyst = await runSingleAgent('Analyst', runAnalyst, [scout ? scout.result : task])
+      const threat = await runSingleAgent('Threat', runThreat, [(scout ? scout.result : '') + ' ' + (analyst ? analyst.result : '')])
+      const allFindings = allResults.map(r => r.result).join('\n')
+      const reporter = await runSingleAgent('Reporter', runReporter, [allFindings || task])
+
+      clearTimeout(missionTimeout)
+
+      const elapsed = ((Date.now() - startTime) / 1000).toFixed(1)
+
+      if (allResults.length > 0) {
+        const lastSuccessful = reporter || allResults[allResults.length - 1]
+        const reporterText = stripMarkdown(lastSuccessful.result)
+        const verdict = getVerdict(reporterText)
+
+        setLines(prev => [...prev, {
+          agentName: 'Orchestrator',
+          message: `VERDICT: ${verdict} - ${reporterText.length > 80 ? reporterText.slice(0, 80) + '...' : reporterText}`,
+          hash: 'sha256:' + lastSuccessful.proof.hash.slice(0, 8) + '...',
+          active: false,
+        }])
+        scrollToBottom()
+
+        setSummary({
+          verdict,
+          reporterSummary: reporterText.length > 200 ? reporterText.slice(0, 200) + '...' : reporterText,
+          proofCount: allResults.length,
+          elapsed: elapsed + 's',
+        })
+
         addMission({
-          task: task.trim(),
+          task,
           timestamp: new Date().toISOString(),
           agentCount: allResults.length,
           verdict,
           proofCount: allResults.length,
           duration: elapsed + 's',
-          isDemo: anyDemo,
           results: allResults.map(r => ({ agentName: r.proof.agentName, decision: stripMarkdown(r.result), hash: r.proof.hash })),
           proofs: allResults.map(r => r.proof),
         })
       }
 
+      if (failedCount > 0) setRateLimited(true)
+      setStatus('complete')
+    } catch (err) {
+      clearTimeout(missionTimeout)
+      console.error('Mission error:', err)
+
+      const elapsed = ((Date.now() - startTime) / 1000).toFixed(1)
+
+      if (allResults.length > 0) {
+        const lastResult = allResults[allResults.length - 1]
+        const verdict = getVerdict(lastResult.result)
+        setSummary({
+          verdict,
+          reporterSummary: stripMarkdown(lastResult.result).slice(0, 200),
+          proofCount: allResults.length,
+          elapsed: elapsed + 's',
+        })
+        addMission({
+          task,
+          timestamp: new Date().toISOString(),
+          agentCount: allResults.length,
+          verdict,
+          proofCount: allResults.length,
+          duration: elapsed + 's',
+          results: allResults.map(r => ({ agentName: r.proof.agentName, decision: stripMarkdown(r.result), hash: r.proof.hash })),
+          proofs: allResults.map(r => r.proof),
+        })
+      }
+
+      setRateLimited(true)
       setStatus('complete')
     }
   }, [canRun, taskString, addProof, addMission, scrollToBottom])
@@ -259,8 +243,8 @@ export default function ConsolePage() {
     setAddress('')
     setLines([])
     setProofCards([])
-    setIsDemo(false)
     setSummary(null)
+    setRateLimited(false)
   }
 
   return (
@@ -275,13 +259,6 @@ export default function ConsolePage() {
             <span>{shortAddress}</span>
           </div>
         </div>
-
-        {isDemo && (
-          <div className="demo-banner">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-            API unavailable - showing demo data with verified proof hashes
-          </div>
-        )}
 
         <div className="mission-type-selector">
           {TASK_TYPES.map(t => (
@@ -324,23 +301,31 @@ export default function ConsolePage() {
           </div>
         </div>
 
-        <div className="mission-actions">
-          {status === 'complete' ? (
-            <div className="mission-actions-wrap">
+        <div className="mission-actions-section">
+          <div className="mission-actions">
+            {status === 'complete' ? (
               <button className="btn-run" onClick={resetMission}>Run New Mission</button>
-              {cooldown > 0 && (
-                <span className="cooldown-text">Cooldown - ready in {cooldown}s</span>
-              )}
-              {cooldown === 0 && (
-                <span className="cooldown-ready">Ready for next mission</span>
-              )}
-            </div>
-          ) : (
-            <button className="btn-run" onClick={runMission} disabled={status === 'running' || !canRun}>
-              {status === 'running' ? 'Running...' : 'Run Mission'}
-            </button>
-          )}
+            ) : (
+              <button className="btn-run" onClick={runMission} disabled={status === 'running' || !canRun}>
+                {status === 'running' ? 'Running...' : 'Run Mission'}
+              </button>
+            )}
+          </div>
+          <div className="mission-rate-notice">Each mission makes 5 sequential API calls to Ambient Network - allow 2-3 minutes between missions to avoid rate limits</div>
         </div>
+
+        {rateLimited && (
+          <div className="rate-limit-banner">
+            <div className="rate-limit-text">
+              Rate limit reached - Ambient Network allows limited sequential API calls per minute. Please wait 2-3 minutes before running another mission
+            </div>
+            {retryCooldown > 0 ? (
+              <div className="rate-limit-countdown">Retry available in {Math.floor(retryCooldown / 60)}:{String(retryCooldown % 60).padStart(2, '0')}</div>
+            ) : (
+              <button className="btn-retry" onClick={resetMission}>Retry Mission</button>
+            )}
+          </div>
+        )}
 
         {lines.length > 0 && (
           <div className="live-console">
