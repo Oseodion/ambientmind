@@ -52,7 +52,7 @@ Delivers:
 - Multiple agents interacting together with shared state via React Context
 - Specialized agent roles with distinct system prompts and responsibilities
 - Multi-step agent workflow with sequential coordination
-- Live demo at [Vercel URL]
+- Live demo at https://ambientmind.vercel.app
 - Full repository with all source code
 
 ## Running locally
